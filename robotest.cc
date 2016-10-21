@@ -17,6 +17,7 @@ using namespace std;
 enum THREAD_ID:int
 {
 	THREAD_ID_NAV,
+	IDENTIFATION_IMAGE,
 	N_THREADS
 };
 
@@ -57,6 +58,12 @@ int main ()
 	thread threads[N_THREADS];
 	
 	threads[THREAD_ID_NAV] = thread(nav_test, &robot);
+	threads[IDENTIFATION_IMAGE] = thread(robovision, 
+		"./object-pictures/ancient-lamp.jpg", 
+		"./object-pictures/low-resolution/ancient-lamp-600.jpg",
+		"./object-pictures/test.jpg",
+		1);
+
 	// 0-31 priorities
 	//SetThreadPriority(threads[THREAD_ID_NAV],31);
 	
