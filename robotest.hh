@@ -1,3 +1,6 @@
+#ifndef ROBOTEST_H
+#define ROBOTEST_H
+
 #include <SerialStream.h>
 #include "irobot-create.hh"
 #include <ctime>
@@ -25,3 +28,5 @@ enum THREAD_ID:int
 	THREAD_ID_NAV,
 	N_THREADS
 };
+
+#endif
