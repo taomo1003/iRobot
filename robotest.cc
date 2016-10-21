@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <thread>
+#include <object-identifation/robovision.hh>
 
 using namespace iRobot;
 using namespace LibSerial;
@@ -58,7 +59,7 @@ int main ()
 	thread threads[N_THREADS];
 	
 	threads[THREAD_ID_NAV] = thread(nav_test, &robot);
-	threads[IDENTIFATION_IMAGE] = thread(robovision, 
+	threads[IDENTIFATION_IMAGE] = thread(ident, 
 		"./object-pictures/ancient-lamp.jpg", 
 		"./object-pictures/low-resolution/ancient-lamp-600.jpg",
 		"./object-pictures/test.jpg",
