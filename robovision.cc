@@ -5,43 +5,18 @@
  * maamin2@illinois.edu
 */
 
-#include <chrono>
-#include <iostream>
-#include <opencv2/calib3d.hpp>
-#include <opencv2/core.hpp>
-#include <opencv2/features2d.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/opencv.hpp>
-#include <opencv2/xfeatures2d.hpp>
+#include "robovision.hh"
 
-using namespace cv;
-using namespace cv::xfeatures2d;
-
-using std::chrono::duration;
-using std::chrono::steady_clock;
-using std::cout;
-using std::endl;
-using std::string;
-using std::vector;
-
-bool alignPerspective(vector<Point2f>& query, vector<Point2f>& scene,
-    Mat& img_query, Mat& img_scene, vector<Point2f>& scene_corners);
-void cropBottom(Mat& img_scene_full, Mat& img_scene, float crop_fraction);
-void drawProjection(Mat& img_matches, Mat& img_query,
-    vector<Point2f>& scene_corners);
-string type2str(int type);
-void usage();
-
-int ident(char* argv1,char* argv2,char* argv3,char* argv4) {
-  if(argc != 5) {
-    usage();
-    return -1;
-  }
+int ident( string argv1, string argv2, string argv3, string argv4) {
+    // if(argc != 5) {
+    //   usage();
+    //   return -1;
+    // }
 
   try {
     Mat img_query = imread(argv1, IMREAD_GRAYSCALE);
     Mat img_scene_full = imread(argv2, IMREAD_GRAYSCALE);
-    char *output_file = argv3;
+    string output_file = argv3;
     float keep_top_fraction = std::stof(argv4);
 
     if(!img_query.data || !img_scene_full.data) {

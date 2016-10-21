@@ -33,10 +33,10 @@ string type2str(int type);
 void usage();
 
 int ident(char* argv1,char* argv2,char* argv3,char* argv4) {
-  if(argc != 5) {
-    usage();
-    return -1;
-  }
+    // if(argc != 5) {
+    //   usage();
+    //   return -1;
+    // }
 
   try {
     Mat img_query = imread(argv1, IMREAD_GRAYSCALE);

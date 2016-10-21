@@ -25,4 +25,4 @@ void drawProjection(Mat& img_matches, Mat& img_query,
 string type2str(int type);
 void usage();
 
-int ident(char* argv1,char* argv2,char* argv3,char* argv4);
+int ident( string argv1, string argv2, string argv3, string argv4);
