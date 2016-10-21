@@ -88,21 +88,7 @@ void nav_test(Create* robot)
 	
 	while (!robot->playButton ())
     {
-      wallSignal = robot->wallSignal();
-	  
-	  if (wallSignal != 0)
-	  {
-      cout << "Wall signal " << wallSignal << endl;
-
-	  if(wallSignal<20)
-	  {
-		robot->sendDriveCommand (0, Create::DRIVE_INPLACE_CLOCKWISE);
-	  }
-	  else if(wallSignal>20)
-	  {
-	  	robot->sendDriveCommand (0, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
-	  }
-	  }
+      //Todo do something here
 	}
 	return;
   }
