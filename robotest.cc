@@ -1,30 +1,15 @@
-#include <SerialStream.h>
-#include "irobot-create.hh"
-#include <ctime>
-#include <iostream>
-#include <chrono>
-#include <thread>
-#include <raspicam/raspicam_cv.h>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <stdlib.h>
-#include <time.h>
-#include <thread>
-#include "robovision.hh"
+#include "robotest.hh"
+//#include "nav.hh"
+#include "open_CV_image.hh"
+//#include "open_CV_contour.hh"
 
 using namespace iRobot;
 using namespace LibSerial;
 using namespace std;
-using namespace cv;
-using namespace cv::xfeatures2d;
 
-enum THREAD_ID:int
-{
-	THREAD_ID_NAV,
-	IDENTIFATION_IMAGE,
-	N_THREADS
-};
+pthread_mutex_t movement = PTHREAD_MUTEX_INITIALIZER;
 
-void nav_test(Create* d);
+	thread_manager gTheThreadManager;
 
 int main ()
 {
@@ -58,23 +43,17 @@ int main ()
     robot.sendStreamCommand (sensors);
     cout << "Sent Stream Command" << endl;
 	
-	thread threads[N_THREADS];
+	//gTheThreadManager.create_new_thread(nav_test, THREAD_ID_NAV, (void*)&robot, 25);
 	
-	threads[THREAD_ID_NAV] = thread(nav_test, &robot);
+	gTheThreadManager.create_new_thread(open_CV_image, THREAD_ID_IDENT_IMAGE, (void*)&Camera, 24);
 
-	// threads[IDENTIFATION_IMAGE] = thread(robovision::ident, 
-	// 	"./object-pictures/ancient-lamp.jpg", 
-	// 	"./object-pictures/low-resolution/ancient-lamp-600.jpg",
-	// 	"./object-pictures/test.jpg",
-	// 	1);
-
-	// 0-31 priorities
-	//SetThreadPriority(threads[THREAD_ID_NAV],31);
+	gTheThreadManager.join_all_threads();
 	
-	for(int i=0; i<N_THREADS;i++)
-	{
-		threads[i].join();
-	}
+
+	pthread_mutex_destroy ( &movement );
+
+
+	robot.sendDriveCommand(0, Create::DRIVE_INPLACE_CLOCKWISE);
 	
 	}
 	catch (InvalidArgument& e)
@@ -91,20 +70,26 @@ int main ()
 	return 0;
 }
 
-
-void nav_test(Create* robot)
-{	
-	short wallSignal = 0;
-	string p1 = "./object-pictures/ancient-lamp.jpg";
-	string p2 = "./object-pictures/low-resolution/ancient-lamp-600.jpg";
-	string p3 = "./object-pictures/test.jpg";
-	string p4 = "1.0";
-	int test = ident(p1,p2,p3,p4);
-	
-	while (!robot->playButton ())
-    {
-      //Todo do something here
-
+void lockMtx(const MUTEX_ID MtxID)
+{
+	if (MtxID == MUTEX_ID_MOVEMENT)
+	{
+		pthread_mutex_lock(&movement);
 	}
-	return;
-  }
+	else
+	{
+		cerr << "void lockMtx(const MUTEX_ID MtxID) :::: Undefined MtxID" << endl;
+	}
+}
+
+void unlkMtx(const MUTEX_ID MtxID)
+{
+	if (MtxID == MUTEX_ID_MOVEMENT)
+	{
+		pthread_mutex_unlock(&movement);
+	}
+	else
+	{
+		cerr << "void unlkMtx(const MUTEX_ID MtxID) :::: Undefined MtxID" << endl;
+	}
+}
