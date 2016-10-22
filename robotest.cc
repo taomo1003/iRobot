@@ -8,7 +8,8 @@ using namespace iRobot;
 using namespace LibSerial;
 using namespace std;
 
-pthread_mutex_t movement = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t cameraMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t safetyMutex = PTHREAD_MUTEX_INITIALIZER;
 
 	thread_manager gTheThreadManager;
 
