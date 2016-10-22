@@ -11,7 +11,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <stdlib.h>
 #include <time.h>
-#include <pthread.h>
+#include <pthread.h>	
 
 using namespace iRobot;
 using namespace LibSerial;
@@ -25,12 +25,14 @@ enum THREAD_ID:int
 	THREAD_ID_NAV,
 	THREAD_ID_IDENT_IMAGE,
 	THREAD_ID_IDENT_CONTOUR,
+	THREAD_ID_SAFETY,
 	N_THREADS
 };
 
 enum MUTEX_ID:int
 {
-	MUTEX_ID_MOVEMENT
+	MUTEX_ID_SAFETY,
+	MUTEX_ID_CAMERA
 };
 
 class thread_manager

@@ -16,7 +16,7 @@ void* open_CV_contour(void* params)
 	lineWidthaypoints.push_back(Point2f(100, 200)); // Insert point (100, 200) directly.
 	// Print those points.
 	for (auto point : waypoints)
-		std::cout << point << std::endl;
+		cout << point << endl;
 
 	Mat img_output(1200, 1600, CV_8UC3, Scalar(255, 255, 255));
 	// Plot the waypoints using blue color.
