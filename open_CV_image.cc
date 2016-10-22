@@ -16,7 +16,7 @@ void* open_CV_image(void* params)
 
 	while(true)
 	{
-		lockMtx(MUTEX_ID_CAMERA);
+		lockMtx(MUTEX_ID_CAMERA, THREAD_ID_IDENT_IMAGE);
 		robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);
 		this_thread::sleep_for(chrono::milliseconds(500));
 
@@ -24,9 +24,9 @@ void* open_CV_image(void* params)
 		Camera.retrieve (bgr_image);
 		cv::cvtColor(bgr_image, rgb_image, CV_RGB2BGR);
 		cv::imwrite("irobot_image.jpg", rgb_image);
-		cout << "Taking photo" << endl;
+		systemPrint(INFO_NONE, "Taking photo", THREAD_ID_IDENT_IMAGE);
 
-		unlkMtx(MUTEX_ID_CAMERA);
+		unlkMtx(MUTEX_ID_CAMERA, THREAD_ID_IDENT_IMAGE);
 
 		short wallSignal = 0;
 

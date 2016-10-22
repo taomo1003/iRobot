@@ -5,7 +5,7 @@ void* safety(void* parms)
 	Create* robot = (Create*)parms;
 	if(robot==nullptr)
 	{
-		cerr<<"robot not defined"<<endl;
+		systemPrint(INFO_NONE, "robot not defined", THREAD_ID_SAFETY);
 		return nullptr;
 	}
 	
@@ -31,8 +31,7 @@ void* safety(void* parms)
 			}
 			if (!mtxLocked)
 			{
-				cout << "Safety Locked." << endl;
-				lockMtx(MUTEX_ID_SAFETY);
+				lockMtx(MUTEX_ID_SAFETY, THREAD_ID_SAFETY);
 				mtxLocked = true;
 				robot->sendDriveCommand(0.0, Create::DRIVE_STRAIGHT);
 			}
@@ -52,8 +51,7 @@ void* safety(void* parms)
 		{
 			if (mtxLocked)
 			{
-				cout << "Safety Unlocked." << endl;
-				unlkMtx(MUTEX_ID_SAFETY);
+				unlkMtx(MUTEX_ID_SAFETY, THREAD_ID_SAFETY);
 				mtxLocked = false;
 			}
 		}

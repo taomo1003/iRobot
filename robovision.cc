@@ -6,6 +6,7 @@
 */
 
 #include "robovision.hh"
+#include "robotest.hh"
 
 int ident( string argv1, string argv2, string argv3, string argv4) {
     // if(argc != 5) {
@@ -20,7 +21,7 @@ int ident( string argv1, string argv2, string argv3, string argv4) {
     float keep_top_fraction = std::stof(argv4);
 
     if(!img_query.data || !img_scene_full.data) {
-      cout<< "Error reading images" << endl;
+      systemPrint(INFO_SIMPLE, "Error reading images", THREAD_ID_IDENT_IMAGE);
       return -1;
     }
 
@@ -50,16 +51,13 @@ int ident( string argv1, string argv2, string argv3, string argv4) {
     auto sttime = steady_clock::now();
     detector->detectAndCompute(
         img_query, Mat(), keypoints_query, descriptors_query);
-    cout << "Feature extraction query image "
-      << (duration <double>(steady_clock::now() - sttime)).count()
-      << " sec" << endl;
+	systemPrint(INFO_SIMPLE, "Feature extraction query image " + to_string((duration <double>(steady_clock::now() - sttime)).count()) + " sec", THREAD_ID_IDENT_IMAGE);
 
     sttime = steady_clock::now();
     detector->detectAndCompute(
         img_scene, Mat(), keypoints_scene, descriptors_scene);
-    cout << "Feature extraction scene image "
-      << (duration <double>(steady_clock::now() - sttime)).count()
-      << " sec" << endl;
+	systemPrint(INFO_SIMPLE, "Feature extraction scene image " + to_string((duration <double>(steady_clock::now() - sttime)).count()) + " sec", THREAD_ID_IDENT_IMAGE);
+
     sttime = steady_clock::now();
 
     // Matching descriptor vectors using Brute Force matcher
@@ -84,9 +82,7 @@ int ident( string argv1, string argv2, string argv3, string argv4) {
     vector<Point2f> scene_corners(4);
     bool res = alignPerspective(
         query, scene, img_query, img_scene, scene_corners);
-    cout << "Matching and alignment "
-      << (duration <double>(steady_clock::now() - sttime)).count()
-      << " sec" << endl;
+	systemPrint(INFO_SIMPLE, "Matching and alignment " + to_string((duration <double>(steady_clock::now() - sttime)).count()) + " sec", THREAD_ID_IDENT_IMAGE);
 
     // Write output to file
     Mat img_matches;
@@ -105,15 +101,15 @@ int ident( string argv1, string argv2, string argv3, string argv4) {
           Scalar(255, 240, 240), CV_FILLED);
     }
     if (res) {
-      cout << "Object found" << endl;
+	  systemPrint(INFO_NONE, "Object found", THREAD_ID_IDENT_IMAGE);
       drawProjection(img_matches, img_query, scene_corners);
     } else {
-      cout << "Object not found" << endl;
+	  systemPrint(INFO_NONE, "Object not found", THREAD_ID_IDENT_IMAGE);
     }
     // Write result to a file
     cv::imwrite(output_file, img_matches);
   } catch (cv::Exception& e) {
-    cout << "exception caught: " << e.what();
+	  systemPrint(INFO_NONE, e.what(), THREAD_ID_IDENT_IMAGE);
     return -1;
   }
   return 0;
@@ -135,7 +131,7 @@ bool alignPerspective(vector<Point2f>& query, vector<Point2f>& scene,
     Mat& img_query, Mat& img_scene, vector<Point2f>& scene_corners) {
   Mat H = findHomography(query, scene, RANSAC);
   if (H.rows == 0 && H.cols == 0) {
-    cout << "Failed rule0: Empty homography" << endl;
+	systemPrint(INFO_NONE, "Failed rule0: Empty homography", THREAD_ID_IDENT_IMAGE);
     return false;
   }
 
@@ -175,7 +171,7 @@ bool alignPerspective(vector<Point2f>& query, vector<Point2f>& scene,
   // Check for convex hull
   if (!(sc_cross[0] < 0 && sc_cross[1] < 0 && sc_cross[2] < 0 && sc_cross[3] < 0)
       && !(sc_cross[0] > 0 && sc_cross[1] > 0 && sc_cross[2] > 0 && sc_cross[3] > 0)) {
-    cout << "Failed rule1: Not a convex hull" << endl;
+	systemPrint(INFO_NONE, "Failed rule1: Not a convex hull", THREAD_ID_IDENT_IMAGE);
     return false;
   }
 
@@ -183,10 +179,10 @@ bool alignPerspective(vector<Point2f>& query, vector<Point2f>& scene,
   // Rule 3: The detected projection can’t have more than 100% area
   float area = (sc_cross[0] + sc_cross[2]) / 2.0;
   if (fabs(area) < min_area) {
-    cout << "Failed rule2: Projection too small" << endl;
+	  systemPrint(INFO_NONE, "Failed rule2: Projection too small", THREAD_ID_IDENT_IMAGE);
     return false;
   } else if (fabs(area) > max_area) {
-    cout << "Failed rule3: Projection too large" << endl;
+	  systemPrint(INFO_NONE, "Failed rule3: Projection too large", THREAD_ID_IDENT_IMAGE);
     return false;
   }
 
@@ -199,7 +195,7 @@ bool alignPerspective(vector<Point2f>& query, vector<Point2f>& scene,
   for (int i = 0; i < 4; i++) {
     float sint = sc_cross[i] / (sc_norm[i] * sc_norm[(i + 1) % 4]);
     if (fabs(sint) < min_angle_sin) {
-      cout << "Failed rule4: Contains very small angle" << endl;
+		systemPrint(INFO_NONE, "Failed rule4: Contains very small angle", THREAD_ID_IDENT_IMAGE);
       return false;
     }
   }
@@ -211,7 +207,7 @@ bool alignPerspective(vector<Point2f>& query, vector<Point2f>& scene,
   cv::Rect scene_rect(0.0, 0.0, img_scene.cols, img_scene.rows);
   cv::Rect isect = bound & scene_rect;
   if (isect.width * isect.height <  ratio_inside * bound.width * bound.height ) {
-    cout << "Failed rule5: Large proportion outside scene" << endl;
+	  systemPrint(INFO_NONE, "Failed rule5: Large proportion outside scene", THREAD_ID_IDENT_IMAGE);
     return false;
   }
   return true;
@@ -252,6 +248,6 @@ string type2str(int type) {
 }
 
 void usage() {
-  cout << " Usage: ./robovision <query-image> <scene-image> <output-image> <crop-bottom>" << endl;
+  systemPrint(INFO_NONE, " Usage: ./robovision <query-image> <scene-image> <output-image> <crop-bottom>", THREAD_ID_IDENT_IMAGE);
 }
 
