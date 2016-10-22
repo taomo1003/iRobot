@@ -1,14 +1,26 @@
 #include "robotest.hh"
+<<<<<<< HEAD
 #include "open_CV_image.hh"
 #include "robotest.hh"
 #include "nav.hh"
+=======
+#include "nav.hh"
+//#include "open_CV_image.hh"
+//#include "open_CV_contour.hh"
+>>>>>>> 1f4a68c02e75637d0d2df24e2ef66e7300c440b0
 #include "safety.hh"
 
 using namespace iRobot;
 using namespace LibSerial;
 using namespace std;
 
+<<<<<<< HEAD
 pthread_mutex_t movement = PTHREAD_MUTEX_INITIALIZER;
+=======
+pthread_mutex_t safetyMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t cameraMutex = PTHREAD_MUTEX_INITIALIZER;
+
+>>>>>>> 1f4a68c02e75637d0d2df24e2ef66e7300c440b0
 
 	thread_manager gTheThreadManager;
 
@@ -43,14 +55,24 @@ int main ()
     robot.sendStreamCommand (sensors);
     cout << "Sent Stream Command" << endl;
 	
+<<<<<<< HEAD
 	gTheThreadManager.create_new_thread(nav_test, THREAD_ID_NAV, (void*)&robot, 25);
 	
 	gTheThreadManager.create_new_thread(open_CV_image, THREAD_ID_IDENT_IMAGE, (void*)&Camera, 24);
 
+=======
+	//gTheThreadManager.create_new_thread(nav_test, THREAD_ID_NAV, (void*)&robot, 25);
+	
+	//gTheThreadManager.create_new_thread(open_CV_image, THREAD_ID_IDENT_IMAGE, (void*)&Camera, 24);
+>>>>>>> 1f4a68c02e75637d0d2df24e2ef66e7300c440b0
 	gTheThreadManager.create_new_thread(safety, THREAD_ID_SAFETY, (void*)&robot, 31);
 
 	gTheThreadManager.join_all_threads();
 	
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1f4a68c02e75637d0d2df24e2ef66e7300c440b0
 	pthread_mutex_destroy ( &safetyMutex );
 	pthread_mutex_destroy ( &cameraMutex );
 
@@ -97,9 +119,18 @@ void unlkMtx(const MUTEX_ID MtxID)
 	else if (MtxID == MUTEX_ID_CAMERA)
 	{
 		pthread_mutex_unlock(&cameraMutex);
+<<<<<<< HEAD
 	}
 	else
 	{
 		cerr << "void unlkMtx(const MUTEX_ID MtxID) :::: Undefined MtxID" << endl;
 	}
 }
+=======
+	}
+	else
+	{
+		cerr << "void unlkMtx(const MUTEX_ID MtxID) :::: Undefined MtxID" << endl;
+	}
+}
+>>>>>>> 1f4a68c02e75637d0d2df24e2ef66e7300c440b0

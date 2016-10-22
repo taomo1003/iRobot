@@ -11,7 +11,11 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <stdlib.h>
 #include <time.h>
+<<<<<<< HEAD
 #include <pthread.h>	
+=======
+#include <pthread.h>
+>>>>>>> 1f4a68c02e75637d0d2df24e2ef66e7300c440b0
 
 using namespace iRobot;
 using namespace LibSerial;
