@@ -134,7 +134,7 @@ int find_max_wall_signal(Create* robot)
 		this_thread::sleep_for(chrono::milliseconds(10));
 		prevWallSignal = wallSignal;
 		wallSignal = robot->wallSignal();
-		cout << wallSignal << endl;
+		//cout << wallSignal << endl;
 		if (wallSignal - prevWallSignal >= 4)
 		{
 			
