@@ -44,14 +44,14 @@ int main ()
     robot.sendStreamCommand (sensors);
     cout << "Sent Stream Command" << endl;
 
-    void* paramsForOpenCVImage = new void*[2];
+    void** paramsForOpenCVImage = new void*[2];
 
     paramsForOpenCVImage[0] = &Camera;
     paramsForOpenCVImage[1] = &robot;
 	
 	gTheThreadManager.create_new_thread(nav_test, THREAD_ID_NAV, (void*)&robot, 25);
 	
-	gTheThreadManager.create_new_thread(open_CV_image, THREAD_ID_IDENT_IMAGE, paramsForOpenCVImage, 24);
+	gTheThreadManager.create_new_thread(open_CV_image, THREAD_ID_IDENT_IMAGE, (void*)paramsForOpenCVImage, 24);
 
 	gTheThreadManager.create_new_thread(safety, THREAD_ID_SAFETY, (void*)&robot, 31);
 
