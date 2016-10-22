@@ -102,19 +102,20 @@ void* nav_test(void* parms)
 
 void sendDriveCommand(Create* robot, const int speed, Create::DriveCommand direction)
 {
-	sem_wait(movement);
+	lockMtx(MUTEX_ID_CAMERA);
+	lockMtx(MUTEX_ID_SAFETY);
 	robot->sendDriveCommand(speed, direction);
-	sem_post(movement);
+	unlkMtx(MUTEX_ID_SAFETY);
+	unlkMtx(MUTEX_ID_CAMERA);
 }
 
 void sendDriveCommand(Create* robot, const int speed, short radius)
-{
-	cout << "drive function" << endl;
-	sem_wait(movement);
-	cout << "   sem lock" << endl;
+{	
+	lockMtx(MUTEX_ID_CAMERA);
+	lockMtx(MUTEX_ID_SAFETY);
 	robot->sendDriveCommand(speed, radius);
-	sem_post(movement);
-	cout << "   sem unlock" << endl;
+	unlkMtx(MUTEX_ID_SAFETY);
+	unlkMtx(MUTEX_ID_CAMERA);
 }
 
 int find_max_wall_signal(Create* robot)

@@ -1,11 +1,18 @@
 #include "robotest.hh"
 #include "nav.hh"
+//#include "open_CV_image.hh"
+//#include "open_CV_contour.hh"
+#include "safety.hh"
 
 using namespace iRobot;
 using namespace LibSerial;
 using namespace std;
 
-pthread_t callThd[N_THREADS];
+pthread_mutex_t safetyMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t cameraMutex = PTHREAD_MUTEX_INITIALIZER;
+
+
+	thread_manager gTheThreadManager;
 
 int main ()
 {
@@ -32,35 +39,24 @@ int main ()
 	
 	// Let's stream some sensors.
     Create::sensorPackets_t sensors;
-    sensors.push_back(Create::SENSOR_BUMPS_WHEELS_DROPS);
-    sensors.push_back(Create::SENSOR_WALL_SIGNAL);
+    sensors.push_back(Create::SENSOR_GROUP_1);
     sensors.push_back (Create::SENSOR_BUTTONS);
 
     robot.sendStreamCommand (sensors);
     cout << "Sent Stream Command" << endl;
 	
-	movement = new sem_t;
-	sem_init(movement, true, 1);
-	//thread threads[N_THREADS];
+	//gTheThreadManager.create_new_thread(nav_test, THREAD_ID_NAV, (void*)&robot, 25);
 	
-	pthread_create(&callThd[THREAD_ID_NAV], NULL, nav_test, (void*)&robot);
-	// 0-31 priorities
-	sched_param sch_params;
+	//gTheThreadManager.create_new_thread(open_CV_image, THREAD_ID_IDENT_IMAGE, (void*)&Camera, 24);
+	gTheThreadManager.create_new_thread(safety, THREAD_ID_SAFETY, (void*)&robot, 31);
+
+	gTheThreadManager.join_all_threads();
 	
-	sch_params.sched_priority = 25;
-	
-	if (pthread_setschedparam(callThd[THREAD_ID_NAV], SCHED_FIFO, &sch_params))
-	{
-		cerr << "Failed to set thread priority." << endl;
-	}
-	
-	for(int i=0; i<N_THREADS;i++)
-	{
-		pthread_join(callThd[i],NULL);
-	}
-	sem_destroy( movement );
-	delete movement;
-	
+
+	pthread_mutex_destroy ( &safetyMutex );
+	pthread_mutex_destroy ( &cameraMutex );
+
+
 	robot.sendDriveCommand(0, Create::DRIVE_INPLACE_CLOCKWISE);
 	
 	}
@@ -76,4 +72,36 @@ int main ()
   }
 	
 	return 0;
+}
+
+void lockMtx(const MUTEX_ID MtxID)
+{
+	if (MtxID == MUTEX_ID_SAFETY)
+	{
+		pthread_mutex_lock(&safetyMutex);
+	}
+	else if (MtxID == MUTEX_ID_CAMERA)
+	{
+		pthread_mutex_lock(&cameraMutex);
+	}
+	else
+	{
+		cerr << "void lockMtx(const MUTEX_ID MtxID) :::: Undefined MtxID" << endl;
+	}
+}
+
+void unlkMtx(const MUTEX_ID MtxID)
+{
+	if (MtxID == MUTEX_ID_SAFETY)
+	{
+		pthread_mutex_unlock(&safetyMutex);
+	}
+	else if (MtxID == MUTEX_ID_CAMERA)
+	{
+		pthread_mutex_unlock(&cameraMutex);
+	}
+	else
+	{
+		cerr << "void unlkMtx(const MUTEX_ID MtxID) :::: Undefined MtxID" << endl;
+	}
 }
