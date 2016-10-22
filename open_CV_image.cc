@@ -10,8 +10,8 @@ using namespace cv::xfeatures2d;
 
 void* open_CV_image(void* params)
 {	
-	raspicam::RaspiCam_Cv Camera = *((raspicam::RaspiCam_Cv*) params[0]);
-	Create* robot = (Create*)params[1];
+	raspicam::RaspiCam_Cv Camera = *((raspicam::RaspiCam_Cv*) ((void**)params)[0]);
+	Create* robot = (Create*)((void**)params)[1];
 	cv::Mat rgb_image, bgr_image;
 
 	while(true)
