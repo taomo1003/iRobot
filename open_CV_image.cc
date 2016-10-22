@@ -10,23 +10,35 @@ using namespace cv::xfeatures2d;
 
 void* open_CV_image(void* params)
 {	
-	raspicam::RaspiCam_Cv Camera = *((raspicam::RaspiCam_Cv*) params);
+	raspicam::RaspiCam_Cv Camera = *((raspicam::RaspiCam_Cv*) params[0]);
+	Create* robot = (Create*)params[1];
 	cv::Mat rgb_image, bgr_image;
 
-	Camera.grab();
-	Camera.retrieve (bgr_image);
-	cv::cvtColor(bgr_image, rgb_image, CV_RGB2BGR);
-	cv::imwrite("irobot_image.jpg", rgb_image);
-	cout << "Taking photo" << endl;
+	while(true)
+	{
+		lockMtx(MUTEX_ID_CAMERA);
+		robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);
+		this_thread::sleep_for(chrono::milliseconds(500));
 
-	short wallSignal = 0;
+		Camera.grab();
+		Camera.retrieve (bgr_image);
+		cv::cvtColor(bgr_image, rgb_image, CV_RGB2BGR);
+		cv::imwrite("irobot_image.jpg", rgb_image);
+		cout << "Taking photo" << endl;
 
-	string p1 = "./object-pictures/low-resolution/ancient-lamp-600.jpg";
-	string p2 = "irobot_image.jpg";
-	string p3 = "test.jpg";
-	string p4 = "0.85";
+		unlkMtx(MUTEX_ID_CAMERA);
 
-	int test = ident(p1,p2,p3,p4);
-	cout << "End of ident" << endl;
+		short wallSignal = 0;
+
+		string p1 = "./object-pictures/low-resolution/ancient-lamp-600.jpg";
+		string p2 = "irobot_image.jpg";
+		string p3 = "test.jpg";
+		string p4 = "0.85";
+
+		int test = ident(p1,p2,p3,p4);
+		
+		this_thread::sleep_for(chrono::milliseconds(1000));
+	}
+
 	return NULL;
   }
