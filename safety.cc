@@ -10,44 +10,64 @@ void* safety(void* parms)
 	}
 	
 	bool mtxLocked = false;
-	bool overcurrnt = false;
+	bool overcurrent = false;
 	
 	Create::note_t note1(60,45);
 	Create::note_t note2(Create::NO_NOTE,70);
 	Create::song_t song = {note1, note2};
+	
+	lockMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);
 	robot->sendSongCommand(0,song);
+	unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);
 				
 	while(true)
 	{
+		lockMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);
+		bool SafteySensorFired;
+		SafteySensorFired = robot->wheeldropLeft();
+		SafteySensorFired |=robot->wheeldropRight();
+		SafteySensorFired |=robot->wheeldropCaster();//might not need this one
+
+		bool overcurrentsensor = false;
+		//bool overcurrentsensor = robot->rightWheelOvercurrent();
+		//overcurrentsensor |=robot->leftWheelOvercurrent();
+		
+		//SafteySensorFired |=robot->cliffLeftSignal();
+		//SafteySensorFired |=robot->cliffFrontLeftSignal();
+		//SafteySensorFired |=robot->cliffRightSignal();
+		//SafteySensorFired |=robot->cliffFrontRightSignal();
+		
+		bool robotButton = robot->playButton();
+		unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);
+
 		//if a safety sencer is fired stop the robot.
-		if(robot->wheeldropLeft()         || robot->wheeldropRight()        || robot->wheeldropCaster() ||
-		   robot->rightWheelOvercurrent() || robot->leftWheelOvercurrent()  ||
-		   robot->cliffLeftSignal()		  || robot->cliffFrontLeftSignal()	||
-		   robot->cliffRightSignal()	  || robot->cliffFrontRightSignal()									)
+		if(SafteySensorFired || overcurrentsensor)
 		{
-			if(robot->rightWheelOvercurrent() || robot->leftWheelOvercurrent())
+			if(overcurrentsensor)
 			{
-				overcurrnt=true;
+				overcurrent=true;
 			}
 			if (!mtxLocked)
 			{
 				lockMtx(MUTEX_ID_SAFETY, THREAD_ID_SAFETY);
 				mtxLocked = true;
+				
+				lockMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);
 				robot->sendDriveCommand(0.0, Create::DRIVE_STRAIGHT);
+				unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);
 			}
+			lockMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);
 			robot->sendPlaySongCommand(0);
+			unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);
 		}
 		
-		if(robot->playButton())
+		if(robotButton)
 		{
-			overcurrnt=false;
+			overcurrent=false;
 		}
 		
 		//if no saftey sencers are fired start the robot
-		if(!robot->wheeldropLeft()         && !robot->wheeldropRight()        && !robot->wheeldropCaster() &&
-		   !overcurrnt					   &&
-		   !robot->cliffLeftSignal()	   && !robot->cliffFrontLeftSignal()  &&
-		   !robot->cliffRightSignal()	   && !robot->cliffFrontRightSignal()									)
+		if(!SafteySensorFired && !overcurrent)
 		{
 			if (mtxLocked)
 			{

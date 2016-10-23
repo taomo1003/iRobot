@@ -43,7 +43,8 @@ enum MUTEX_ID:int
 {
 	MUTEX_ID_SAFETY,
 	MUTEX_ID_CAMERA,
-	MUTEX_ID_PRINT
+	MUTEX_ID_PRINT,
+	MUTEX_ID_SERIAL
 };
 
 void systemPrint(const INFO_LEVEL lvl,  const string s, const THREAD_ID id);
@@ -65,7 +66,7 @@ protected:
 		sch_params[Id].sched_priority = priority;	
 		if (pthread_setschedparam(callThd[Id], SCHED_FIFO, &sch_params[Id]))
 		{
-			systemPrint(INFO_NONE, "Failed to Set Thread Priority For Thread " + Id, THREAD_ID_MAIN);
+			systemPrint(INFO_NONE, "Failed to Set Thread Priority For Thread " + to_string(Id), THREAD_ID_MAIN);
 		}
 	}
 	void join_thread(THREAD_ID Id)

@@ -15,21 +15,31 @@ void* nav_test(void* parms)
 	}
 	short wallSignal = 0;
 	short prevWallSignal =0;
-	short maxWallSignal = find_max_wall_signal(robot);
-	short wallSignalFail = 0;
-	  
-	//spin_to_max(robot, maxWallSignal);
+	short maxWallSignal = 0;
+	short wallSignalFail = 0;	
 	
-
-	
-	sendDriveCommand(robot,207, Create::DRIVE_STRAIGHT);
-	
-	while (!robot->playButton ())
+	bool loop = false;
+	while(!loop)
+	{
+		sendDriveCommand(robot,207, Create::DRIVE_STRAIGHT);
+		lockMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
+		loop = robot->bumpLeft()|robot->bumpLeft();
+		unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
+	}
+	loop = true;
+	while (loop)
     {
+	  lockMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
       wallSignal = robot->wallSignal();
+	  bool bBumpLeft = robot->bumpLeft();
+	  bool bBumpRight = robot->bumpRight();
+	  loop = !robot->playButton ();
+	  unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
+	  
 	  systemPrint(INFO_ALL, to_string(wallSignal), THREAD_ID_NAV);
 	  
-	  if(robot->bumpLeft () || robot->bumpRight ())
+	  
+	  if( bBumpLeft || bBumpRight )
 	  {
 		  systemPrint(INFO_SIMPLE, "Bump", THREAD_ID_NAV);
 		  sendDriveCommand(robot,-207, Create::DRIVE_STRAIGHT);
@@ -62,7 +72,9 @@ void sendDriveCommand(Create* robot, const int speed, Create::DriveCommand direc
 {
 	lockMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
 	lockMtx(MUTEX_ID_SAFETY, THREAD_ID_NAV);
+	lockMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
 	robot->sendDriveCommand(speed, direction);
+	unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
 	unlkMtx(MUTEX_ID_SAFETY, THREAD_ID_NAV);
 	unlkMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
 }
@@ -71,7 +83,9 @@ void sendDriveCommand(Create* robot, const int speed, short radius)
 {	
 	lockMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
 	lockMtx(MUTEX_ID_SAFETY, THREAD_ID_NAV);
+	lockMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
 	robot->sendDriveCommand(speed, radius);
+	unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
 	unlkMtx(MUTEX_ID_SAFETY, THREAD_ID_NAV);
 	unlkMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
 }
@@ -85,12 +99,17 @@ int find_max_wall_signal(Create* robot)
 	
 	systemPrint(INFO_SIMPLE, "Spinning to Parallel", THREAD_ID_NAV);
 	  
-	  sendDriveCommand(robot,ROTATE_SPEED, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
 	  for (int i = 0; i < 400; ++i)
 	  {
+	    sendDriveCommand(robot,ROTATE_SPEED, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
 		this_thread::sleep_for(chrono::milliseconds(10));
 		prevWallSignal = wallSignal;
+		
+		lockMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
 		wallSignal = robot->wallSignal();
+		unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
+
+		
 		//cout << wallSignal << endl;
 		if (wallSignal - prevWallSignal >= 4)
 		{

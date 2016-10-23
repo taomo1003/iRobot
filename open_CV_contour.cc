@@ -1,3 +1,6 @@
+#include "open_CV_contour.hh"
+#include "robotest.hh"
+
 using namespace iRobot;
 using namespace LibSerial;
 using namespace std;
@@ -13,10 +16,14 @@ void* open_CV_contour(void* params)
 	// Insert some points.
 	Point2f apoint(10,10); // Create point (10, 10).
 	waypoints.push_back(apoint);
-	lineWidthaypoints.push_back(Point2f(100, 200)); // Insert point (100, 200) directly.
+	waypoints.push_back(Point2f(0,0));
+	waypoints.push_back(Point2f(-10,0));
+	waypoints.push_back(Point2f(-10,-10));
+	waypoints.push_back(Point2f(0,0));
+	//lineWidthaypoints.push_back(Point2f(100, 200)); // Insert point (100, 200) directly.
 	// Print those points.
-	for (auto point : waypoints)
-		cout << point << endl;
+	// for (auto point : waypoints)
+	// 	cout << point << endl;
 
 	Mat img_output(1200, 1600, CV_8UC3, Scalar(255, 255, 255));
 	// Plot the waypoints using blue color.

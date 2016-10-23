@@ -11,6 +11,8 @@ using namespace std;
 pthread_mutex_t cameraMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t safetyMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t printMutex  = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t serialMutex  = PTHREAD_MUTEX_INITIALIZER;
+
 
 
 	thread_manager gTheThreadManager;
@@ -49,10 +51,11 @@ int main ()
 	
 	// Let's stream some sensors.
     Create::sensorPackets_t sensors;
-    sensors.push_back(Create::SENSOR_GROUP_1);
+    //sensors.push_back(Create::SENSOR_GROUP_1);
     sensors.push_back (Create::SENSOR_BUTTONS);
-	sensors.push_back(Create::SENSOR_BATTERY_CAPACITY);
-	
+	sensors.push_back(Create::SENSOR_BUMPS_WHEELS_DROPS);
+    sensors.push_back(Create::SENSOR_WALL_SIGNAL);
+    
     robot.sendStreamCommand (sensors);
 	
 	systemPrint(INFO_NONE, "Sent Stream Command", THREAD_ID_MAIN);
@@ -79,7 +82,7 @@ int main ()
 	pthread_mutex_destroy ( &safetyMutex );
 	pthread_mutex_destroy ( &cameraMutex );
 	pthread_mutex_destroy ( &printMutex  );
-
+	pthread_mutex_destroy ( &serialMutex );
 
 
 	robot.sendDriveCommand(0, Create::DRIVE_INPLACE_CLOCKWISE);
@@ -115,6 +118,11 @@ void lockMtx(const MUTEX_ID MtxID, const THREAD_ID Id)
 	{
 		pthread_mutex_lock(&printMutex);
 	}
+	else if (MtxID == MUTEX_ID_SERIAL)
+	{
+		pthread_mutex_lock(&serialMutex);
+		systemPrint(INFO_ALL, "Locked Serial Mutex", Id);
+	}
 	else
 	{
 		systemPrint(INFO_NONE, "void unlkMtx(const MUTEX_ID MtxID) :::: Undefined MtxID", Id);
@@ -137,6 +145,11 @@ void unlkMtx(const MUTEX_ID MtxID, const THREAD_ID Id)
 	{
 		pthread_mutex_unlock(&printMutex);
 	}
+	else if (MtxID == MUTEX_ID_SERIAL)
+	{
+		pthread_mutex_unlock(&serialMutex);
+		systemPrint(INFO_ALL, "Unlocked Serial Mutex", Id);
+	}
 	else
 	{
 		systemPrint(INFO_NONE, "void unlkMtx(const MUTEX_ID MtxID) :::: Undefined MtxID", Id);
@@ -158,9 +171,15 @@ void systemPrint(const INFO_LEVEL lvl,  const string s, const THREAD_ID id)
 				"\x1b[36m",//ANSI_COLOR_CYAN
 				"\x1b[0m"  //ANSI_COLOR_RESET
 			};
+			
+			try{
 			lockMtx(MUTEX_ID_PRINT, N_THREADS);
 			printf((colors[id]+s+colors[id]+"\n").c_str());
 			unlkMtx(MUTEX_ID_PRINT, N_THREADS);
+			}catch(ios_base::failure e)
+			{
+				printf((colors[id]+e.what()+colors[id]+"\n").c_str());
+			}
 		}
 	}
 }
