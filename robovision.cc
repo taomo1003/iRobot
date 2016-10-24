@@ -8,19 +8,23 @@
 #include "robovision.hh"
 #include "robotest.hh"
 
+<<<<<<< HEAD
+int ident( vector<string>& argv1, string argv2) {
+=======
 int ident( string argv1, string argv2, string argv3, string argv4) {
     // if(argc != 5) {
     //   usage();
     //   return -1;
     // }
+>>>>>>> c3185a9649cc26801b5731b1ae6ebd8c3ebdb9ff
   int result = 0;
   try {
-    Mat img_query = imread(argv1, IMREAD_GRAYSCALE);
+    
     Mat img_scene_full = imread(argv2, IMREAD_GRAYSCALE);
-    string output_file = argv3;
-    float keep_top_fraction = std::stof(argv4);
+    string output_file = "test.jpg";
+    float keep_top_fraction = 0.85;
 
-    if(!img_query.data || !img_scene_full.data) {
+    if(!img_scene_full.data) {
       systemPrint(INFO_SIMPLE, "Error reading images", THREAD_ID_IDENT_IMAGE);
       return -1;
     }
@@ -50,55 +54,85 @@ int ident( string argv1, string argv2, string argv3, string argv4) {
 
     auto sttime = steady_clock::now();
     detector->detectAndCompute(
-        img_query, Mat(), keypoints_query, descriptors_query);
-	systemPrint(INFO_SIMPLE, "Feature extraction query image " + to_string((duration <double>(steady_clock::now() - sttime)).count()) + " sec", THREAD_ID_IDENT_IMAGE);
-
-    sttime = steady_clock::now();
-    detector->detectAndCompute(
         img_scene, Mat(), keypoints_scene, descriptors_scene);
-	systemPrint(INFO_SIMPLE, "Feature extraction scene image " + to_string((duration <double>(steady_clock::now() - sttime)).count()) + " sec", THREAD_ID_IDENT_IMAGE);
+      systemPrint(INFO_SIMPLE, "Feature extraction scene image " + to_string((duration <double>(steady_clock::now() - sttime)).count()) + " sec", THREAD_ID_IDENT_IMAGE);
 
-    sttime = steady_clock::now();
+ 
+    for (unsigned i = 0; i < argv1.size(); ++i){
 
-    // Matching descriptor vectors using Brute Force matcher
-    BFMatcher matcher(NORM_L2);
-    vector<vector<DMatch>> matches;
-    matcher.knnMatch(descriptors_query, descriptors_scene, matches, 2);
+      Mat img_query = imread(argv1[i], IMREAD_GRAYSCALE);
+      if(!img_query.data) {
+      systemPrint(INFO_SIMPLE, "Error reading images", THREAD_ID_IDENT_IMAGE);
+      return -1;
+      }
+      sttime = steady_clock::now();
+       detector->detectAndCompute(
+        img_query, Mat(), keypoints_query, descriptors_query);
+      systemPrint(INFO_SIMPLE, "Feature extraction query image " + to_string((duration <double>(steady_clock::now() - sttime)).count()) + " sec", THREAD_ID_IDENT_IMAGE);
 
-    vector<DMatch> good_matches;
-    for(int i = 0; i < descriptors_query.rows; i++) {
-      if (matches[i][0].distance < 0.75 * matches[i][1].distance)
-        good_matches.push_back(matches[i][0]);
-    }
+      sttime = steady_clock::now();
 
-    // Find the location of the query in the scene
-    vector<Point2f> query;
-    vector<Point2f> scene;
-    for(size_t i = 0; i < good_matches.size(); i++) {
-      query.push_back(keypoints_query[good_matches[i].queryIdx].pt);
-      scene.push_back(keypoints_scene[good_matches[i].trainIdx].pt);
-    }
+      // Matching descriptor vectors using Brute Force matcher
+      BFMatcher matcher(NORM_L2);
+      vector<vector<DMatch>> matches;
+      matcher.knnMatch(descriptors_query, descriptors_scene, matches, 2);
 
-    vector<Point2f> scene_corners(4);
-    bool res = alignPerspective(
+      vector<DMatch> good_matches;
+      for(int i = 0; i < descriptors_query.rows; i++) {
+        if (matches[i][0].distance < 0.75 * matches[i][1].distance)
+          good_matches.push_back(matches[i][0]);
+      }
+
+      // Find the location of the query in the scene
+      vector<Point2f> query;
+      vector<Point2f> scene;
+      for(size_t i = 0; i < good_matches.size(); i++) {
+        query.push_back(keypoints_query[good_matches[i].queryIdx].pt);
+        scene.push_back(keypoints_scene[good_matches[i].trainIdx].pt);
+      }
+
+      vector<Point2f> scene_corners(4);
+      bool res = alignPerspective(
         query, scene, img_query, img_scene, scene_corners);
-	systemPrint(INFO_SIMPLE, "Matching and alignment " + to_string((duration <double>(steady_clock::now() - sttime)).count()) + " sec", THREAD_ID_IDENT_IMAGE);
+      systemPrint(INFO_SIMPLE, "Matching and alignment " + to_string((duration <double>(steady_clock::now() - sttime)).count()) + " sec", THREAD_ID_IDENT_IMAGE);
 
-    // Write output to file
-    Mat img_matches;
-    drawMatches(img_query, keypoints_query, img_scene, keypoints_scene,
+      // Write output to file
+      Mat img_matches;
+      drawMatches(img_query, keypoints_query, img_scene, keypoints_scene,
         good_matches, img_matches, Scalar::all(-1), Scalar::all(-1),
         vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 
-    // Fill the extra area in almost white (Saves ink when printing)
-    if (img_query.rows < img_scene.rows) {
-      rectangle(img_matches, Point2f(0, img_query.rows),
+      // Fill the extra area in almost white (Saves ink when printing)
+      if (img_query.rows < img_scene.rows) {
+        rectangle(img_matches, Point2f(0, img_query.rows),
           Point2f(img_query.cols - 1, img_scene.rows - 1),
           Scalar(255, 240, 240), CV_FILLED);
-    } else if (img_scene.rows < img_query.rows) {
-      rectangle(img_matches, Point2f(img_query.cols, img_scene.rows),
+      } else if (img_scene.rows < img_query.rows) {
+        rectangle(img_matches, Point2f(img_query.cols, img_scene.rows),
           Point2f(img_query.cols + img_scene.cols - 1, img_query.rows - 1),
           Scalar(255, 240, 240), CV_FILLED);
+<<<<<<< HEAD
+      }
+      if (res) {
+       systemPrint(INFO_NONE, "Object found", THREAD_ID_IDENT_IMAGE);
+       drawProjection(img_matches, img_query, scene_corners);
+       result = 1;
+       cv::imwrite(argv1[i].substr(33).c_str(), img_matches);
+       argv1.erase(argv1.begin()+i);
+       break;
+     } else {
+       systemPrint(INFO_NONE, "Object not found", THREAD_ID_IDENT_IMAGE);
+     }
+      // Write result to a file
+     cv::imwrite(output_file, img_matches);
+   }
+
+ } catch (cv::Exception& e) {
+   systemPrint(INFO_NONE, e.what(), THREAD_ID_IDENT_IMAGE);
+   return -1;
+ }
+ return result;
+=======
     }
     if (res) {
 	    systemPrint(INFO_NONE, "Object found", THREAD_ID_IDENT_IMAGE);
@@ -114,6 +148,7 @@ int ident( string argv1, string argv2, string argv3, string argv4) {
     return -1;
   }
   return result;
+>>>>>>> c3185a9649cc26801b5731b1ae6ebd8c3ebdb9ff
 }
 
 
