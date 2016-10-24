@@ -8,15 +8,7 @@
 #include "robovision.hh"
 #include "robotest.hh"
 
-<<<<<<< HEAD
 int ident( vector<string>& argv1, string argv2) {
-=======
-int ident( string argv1, string argv2, string argv3, string argv4) {
-    // if(argc != 5) {
-    //   usage();
-    //   return -1;
-    // }
->>>>>>> c3185a9649cc26801b5731b1ae6ebd8c3ebdb9ff
   int result = 0;
   try {
     
@@ -111,7 +103,6 @@ int ident( string argv1, string argv2, string argv3, string argv4) {
         rectangle(img_matches, Point2f(img_query.cols, img_scene.rows),
           Point2f(img_query.cols + img_scene.cols - 1, img_query.rows - 1),
           Scalar(255, 240, 240), CV_FILLED);
-<<<<<<< HEAD
       }
       if (res) {
        systemPrint(INFO_NONE, "Object found", THREAD_ID_IDENT_IMAGE);
@@ -132,23 +123,6 @@ int ident( string argv1, string argv2, string argv3, string argv4) {
    return -1;
  }
  return result;
-=======
-    }
-    if (res) {
-	    systemPrint(INFO_NONE, "Object found", THREAD_ID_IDENT_IMAGE);
-      drawProjection(img_matches, img_query, scene_corners);
-      result = 1;
-    } else {
-	  systemPrint(INFO_NONE, "Object not found", THREAD_ID_IDENT_IMAGE);
-    }
-    // Write result to a file
-    cv::imwrite(output_file, img_matches);
-  } catch (cv::Exception& e) {
-	  systemPrint(INFO_NONE, e.what(), THREAD_ID_IDENT_IMAGE);
-    return -1;
-  }
-  return result;
->>>>>>> c3185a9649cc26801b5731b1ae6ebd8c3ebdb9ff
 }
 
 

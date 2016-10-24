@@ -17,19 +17,11 @@ void* open_CV_image(void* params)
 
 	vector<string> imageNames;
 
-<<<<<<< HEAD
 	// string p1 = "irobot_image.jpg";
 	// string p2 = "test.jpg";
 	// string p3 = "0.90";
 
 	//string p4[N_IMAGE_THREADS];
-=======
-	string p1 = "irobot_image.jpg";
-	string p2 = "test.jpg";
-	string p3 = "0.90";
-
-	string p4[N_IMAGE_THREADS];
->>>>>>> c3185a9649cc26801b5731b1ae6ebd8c3ebdb9ff
 
 	imageNames.push_back("ancient-lamp");
 	imageNames.push_back("audio-cassette");
@@ -42,7 +34,6 @@ void* open_CV_image(void* params)
 	imageNames.push_back("roman-glass");
 	imageNames.push_back("willow-plate");
 
-<<<<<<< HEAD
 	//vector<pthread_t> imageThread(N_IMAGE_THREADS);
 	//vector<void**> thdParams(N_IMAGE_THREADS);
 
@@ -50,27 +41,6 @@ void* open_CV_image(void* params)
 	{
 		//if changing this low to high resolution change rename function below.
 		imageNames[i] =(string)"./object-pictures/low-resolution/" + imageNames[i] + (string)"-600.jpg";
-=======
-	vector<pthread_t> imageThread(N_IMAGE_THREADS);
-	vector<void**> thdParams(N_IMAGE_THREADS);
-
-	for(int i = 0; i < imageNames.size(); ++i)
-	{
-		//if changing this low to high resolution change rename function below.
-		imageNames[i] =(string)"./object-pictures/low-resolution/" + imageNames[i] + (string)"-600.jpg";
-	}
-
-	for (int i = 0; i < N_IMAGE_THREADS; ++i)
-	{
-		void** params = new void*[4];
-		params[0] = &imageNames[i];
-		params[1] = &p1;
-		p4[i] = ((string) "test" + to_string(i) + (string)".jpg");
-		params[2] = &p4[i];
-		params[3] = &p3;
-
-		thdParams[i] = params;
->>>>>>> c3185a9649cc26801b5731b1ae6ebd8c3ebdb9ff
 	}
 
 	// for (int i = 0; i < N_IMAGE_THREADS; ++i)
@@ -101,7 +71,6 @@ void* open_CV_image(void* params)
 
 		short wallSignal = 0;
 
-<<<<<<< HEAD
 
 		//void** retValue  = new void*[1];
 		string p1 = "irobot_image.jpg";
@@ -128,33 +97,6 @@ void* open_CV_image(void* params)
 		// }
 
 		//delete retValue;
-=======
-		
-
-		void** retValue  = new void*[1];
-
-		for(unsigned i = 0; i < imageNames.size();++i)
-		{
-			pthread_create(&imageThread[i], NULL, imageThreadFun, thdParams[i]);
-		}
-		
-		for(unsigned i = 0; i < imageNames.size();++i)
-		{
-			pthread_join(imageThread[i], retValue);
-			//systemPrint(INFO_SIMPLE,to_string(*((int*)*retValue)),THREAD_ID_IDENT_IMAGE);
-			if (*((int*)*retValue)==1) {
-				rename((*(((string**)(thdParams[i]))[2])).c_str(),imageNames[i].substr(33).c_str());
-				imageNames.erase(imageNames.begin()+i);
-				imageThread.erase(imageThread.begin() + i);
-				thdParams.erase(thdParams.begin() + i);
-				break;
-				//rename("test.jpg","find.jpg");				
-			}
-			delete (int*)(*retValue);
-		}
-
-		delete retValue;
->>>>>>> c3185a9649cc26801b5731b1ae6ebd8c3ebdb9ff
 
 		this_thread::sleep_for(chrono::milliseconds(1000));
 	}
@@ -163,7 +105,6 @@ void* open_CV_image(void* params)
   }
 
 
-<<<<<<< HEAD
  // void* imageThreadFun(void* params){
  // 	string p0 = *((string*)(((void**)params)[0]));
  // 	string p1 = *((string*)(((void**)params)[1]));
@@ -177,18 +118,3 @@ void* open_CV_image(void* params)
 
  // 	return (void*)retValue;
  // }
-=======
- void* imageThreadFun(void* params){
- 	string p0 = *((string*)(((void**)params)[0]));
- 	string p1 = *((string*)(((void**)params)[1]));
- 	string p2 = *((string*)(((void**)params)[2]));
- 	string p3 = *((string*)(((void**)params)[3]));
-
- 	int test = ident(p0,p1,p2,p3);
-
- 	int* retValue = new int;
- 	*retValue = test;
-
- 	return (void*)retValue;
- }
->>>>>>> c3185a9649cc26801b5731b1ae6ebd8c3ebdb9ff
