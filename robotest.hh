@@ -27,7 +27,7 @@ enum INFO_LEVEL:int
 	INFO_ALL
 };
 
-const INFO_LEVEL gPrintDebug = INFO_ALL;
+const INFO_LEVEL gPrintDebug = INFO_SIMPLE;
 
 enum THREAD_ID:int
 {

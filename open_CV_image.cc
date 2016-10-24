@@ -15,7 +15,14 @@ void* open_CV_image(void* params)
 	Create* robot = (Create*)((void**)params)[1];
 	cv::Mat rgb_image, bgr_image;
 
-	vector<strings> imageNames;
+	vector<string> imageNames;
+
+	string p1 = "irobot_image.jpg";
+	string p2 = "test.jpg";
+	string p3 = "0.90";
+
+	string p4[N_IMAGE_THREADS];
+
 	imageNames.push_back("ancient-lamp");
 	imageNames.push_back("audio-cassette");
 	imageNames.push_back("magic-lamp");
@@ -27,10 +34,25 @@ void* open_CV_image(void* params)
 	imageNames.push_back("roman-glass");
 	imageNames.push_back("willow-plate");
 
+	vector<pthread_t> imageThread(N_IMAGE_THREADS);
+	vector<void**> thdParams(N_IMAGE_THREADS);
+
 	for(int i = 0; i < imageNames.size(); ++i)
 	{
 		//if changing this low to high resolution change rename function below.
-		imageNames[i] ="./object-pictures/low-resolution/" + imageNames[i] + "-600.jpg";
+		imageNames[i] =(string)"./object-pictures/low-resolution/" + imageNames[i] + (string)"-600.jpg";
+	}
+
+	for (int i = 0; i < N_IMAGE_THREADS; ++i)
+	{
+		void** params = new void*[4];
+		params[0] = &imageNames[i];
+		params[1] = &p1;
+		p4[i] = ((string) "test" + to_string(i) + (string)".jpg");
+		params[2] = &p4[i];
+		params[3] = &p3;
+
+		thdParams[i] = params;
 	}
 
 	while(true)
@@ -49,20 +71,49 @@ void* open_CV_image(void* params)
 
 		short wallSignal = 0;
 
-		string p1 = irobot_image;
-		string p2 = "test.jpg";
-		string p3 = "0.85";
-		for(int i = 0; i < imageNames.size();+ +i)
-			{
-				int test = ident(p1,imageNames[i],p2,p3);
-				if (test==1) {
-					imageNames.erase(i);
-					int temp = rename("test.jpg",imageNames[i].substr(33))
-				}
-			}
 		
+
+		void** retValue  = new void*[1];
+
+		for(unsigned i = 0; i < imageNames.size();++i)
+		{
+			pthread_create(&imageThread[i], NULL, imageThreadFun, thdParams[i]);
+		}
+		
+		for(unsigned i = 0; i < imageNames.size();++i)
+		{
+			pthread_join(imageThread[i], retValue);
+			//systemPrint(INFO_SIMPLE,to_string(*((int*)*retValue)),THREAD_ID_IDENT_IMAGE);
+			if (*((int*)*retValue)==1) {
+				rename((*(((string**)(thdParams[i]))[2])).c_str(),imageNames[i].substr(33).c_str());
+				imageNames.erase(imageNames.begin()+i);
+				imageThread.erase(imageThread.begin() + i);
+				thdParams.erase(thdParams.begin() + i);
+				break;
+				//rename("test.jpg","find.jpg");				
+			}
+			delete (int*)(*retValue);
+		}
+
+		delete retValue;
+
 		this_thread::sleep_for(chrono::milliseconds(1000));
 	}
 
 	return NULL;
   }
+
+
+ void* imageThreadFun(void* params){
+ 	string p0 = *((string*)(((void**)params)[0]));
+ 	string p1 = *((string*)(((void**)params)[1]));
+ 	string p2 = *((string*)(((void**)params)[2]));
+ 	string p3 = *((string*)(((void**)params)[3]));
+
+ 	int test = ident(p0,p1,p2,p3);
+
+ 	int* retValue = new int;
+ 	*retValue = test;
+
+ 	return (void*)retValue;
+ }

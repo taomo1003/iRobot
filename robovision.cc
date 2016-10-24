@@ -13,7 +13,7 @@ int ident( string argv1, string argv2, string argv3, string argv4) {
     //   usage();
     //   return -1;
     // }
-
+  int result = 0;
   try {
     Mat img_query = imread(argv1, IMREAD_GRAYSCALE);
     Mat img_scene_full = imread(argv2, IMREAD_GRAYSCALE);
@@ -101,8 +101,9 @@ int ident( string argv1, string argv2, string argv3, string argv4) {
           Scalar(255, 240, 240), CV_FILLED);
     }
     if (res) {
-	  systemPrint(INFO_NONE, "Object found", THREAD_ID_IDENT_IMAGE);
+	    systemPrint(INFO_NONE, "Object found", THREAD_ID_IDENT_IMAGE);
       drawProjection(img_matches, img_query, scene_corners);
+      result = 1;
     } else {
 	  systemPrint(INFO_NONE, "Object not found", THREAD_ID_IDENT_IMAGE);
     }
@@ -112,7 +113,7 @@ int ident( string argv1, string argv2, string argv3, string argv4) {
 	  systemPrint(INFO_NONE, e.what(), THREAD_ID_IDENT_IMAGE);
     return -1;
   }
-  return 0;
+  return result;
 }
 
 

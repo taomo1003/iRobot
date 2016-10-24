@@ -75,7 +75,7 @@ int main ()
 	
 	gTheThreadManager.create_new_thread(open_CV_image, THREAD_ID_IDENT_IMAGE, (void*)paramsForOpenCVImage, 24);
 
-	gTheThreadManager.create_new_thread(safety, THREAD_ID_SAFETY, (void*)&robot, 31);
+	//gTheThreadManager.create_new_thread(safety, THREAD_ID_SAFETY, (void*)&robot, 31);
 
 	gTheThreadManager.join_all_threads();
 	
