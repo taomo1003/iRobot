@@ -51,7 +51,7 @@ int ident( vector<string>& argv1, string argv2) {
 
  
     for (unsigned i = 0; i < argv1.size(); ++i){
-
+      if (stop_running_thread(THREAD_ID_IDENT_IMAGE)) break;
       Mat img_query = imread(argv1[i], IMREAD_GRAYSCALE);
       if(!img_query.data) {
       systemPrint(INFO_SIMPLE, "Error reading images", THREAD_ID_IDENT_IMAGE);

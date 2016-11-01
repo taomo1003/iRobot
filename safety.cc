@@ -11,6 +11,9 @@ void* safety(void* parms)
 	
 	bool mtxLocked = false;
 	bool overcurrent = false;
+	bool ocL = false;
+	bool ocR = false;
+	short overcurrentsensor = 0;
 	
 	Create::note_t note1(60,45);
 	Create::note_t note2(Create::NO_NOTE,70);
@@ -19,31 +22,48 @@ void* safety(void* parms)
 	lockMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);
 	robot->sendSongCommand(0,song);
 	unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);
-				
-	while(true)
+			
+	bool loop = stop_running_thread(THREAD_ID_SAFETY);
+	while(!loop)
 	{
+		auto start_time = std::chrono::system_clock::now();
+		auto deadline = start_time + std::chrono::milliseconds(100);
+
+		loop = stop_running_thread(THREAD_ID_SAFETY);
 		lockMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);
 		bool SafteySensorFired;
 		SafteySensorFired = robot->wheeldropLeft();
 		SafteySensorFired |=robot->wheeldropRight();
 		SafteySensorFired |=robot->wheeldropCaster();//might not need this one
 
-		bool overcurrentsensor = false;
-		//bool overcurrentsensor = robot->rightWheelOvercurrent();
-		//overcurrentsensor |=robot->leftWheelOvercurrent();
+		ocR = robot->rightWheelOvercurrent();
+		ocL = robot->leftWheelOvercurrent();
 		
-		//SafteySensorFired |=robot->cliffLeftSignal();
-		//SafteySensorFired |=robot->cliffFrontLeftSignal();
-		//SafteySensorFired |=robot->cliffRightSignal();
-		//SafteySensorFired |=robot->cliffFrontRightSignal();
+		unsigned short cliffL = robot->cliffLeftSignal();
+		unsigned short cliffR = robot->cliffFrontLeftSignal();
+		unsigned short cliffLF = robot->cliffRightSignal();
+		unsigned short cliffRF = robot->cliffFrontRightSignal();
 		
-		bool robotButton = robot->playButton();
+		bool robotButton = robot->advanceButton();
 		unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);
-
-		//if a safety sencer is fired stop the robot.
-		if(SafteySensorFired || overcurrentsensor)
+		if(ocR)
+			overcurrentsensor++;
+		else if(overcurrentsensor >0)
+			overcurrentsensor--;
+		
+		if(ocL)
+			overcurrentsensor++;
+		else if(overcurrentsensor >0)
+			overcurrentsensor--;
+		
+		if(cliffL<5 || cliffR<5 || cliffLF<5|| cliffRF<5 || overcurrentsensor>10)
 		{
-			if(overcurrentsensor)
+			SafteySensorFired = true;
+		}
+		//if a safety sencer is fired stop the robot.
+		if(SafteySensorFired ||overcurrent)
+		{
+			if(overcurrentsensor > 10)
 			{
 				overcurrent=true;
 			}
@@ -55,6 +75,7 @@ void* safety(void* parms)
 				lockMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);
 				robot->sendDriveCommand(0.0, Create::DRIVE_STRAIGHT);
 				unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);
+				systemPrint(INFO_SIMPLE, "Stopped Robot", THREAD_ID_SAFETY);
 			}
 			lockMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);
 			robot->sendPlaySongCommand(0);
@@ -64,6 +85,7 @@ void* safety(void* parms)
 		if(robotButton)
 		{
 			overcurrent=false;
+			overcurrentsensor=0;
 		}
 		
 		//if no saftey sencers are fired start the robot
@@ -73,9 +95,17 @@ void* safety(void* parms)
 			{
 				unlkMtx(MUTEX_ID_SAFETY, THREAD_ID_SAFETY);
 				mtxLocked = false;
+				systemPrint(INFO_SIMPLE, "Freed Robot", THREAD_ID_SAFETY);
 			}
 		}
 		
-		this_thread::sleep_for(chrono::milliseconds(100));
+		this_thread::sleep_until(deadline);
+	}
+	
+	if (mtxLocked)
+	{
+		unlkMtx(MUTEX_ID_SAFETY, THREAD_ID_SAFETY);
+		mtxLocked = false;
+		systemPrint(INFO_SIMPLE, "Freed Robot", THREAD_ID_SAFETY);
 	}
 }

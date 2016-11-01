@@ -3,6 +3,8 @@
 #include "robotest.hh"
 #include "nav.hh"
 #include "safety.hh"
+#include "external.hh"
+
 
 using namespace iRobot;
 using namespace LibSerial;
@@ -12,20 +14,20 @@ pthread_mutex_t cameraMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t safetyMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t printMutex  = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t serialMutex  = PTHREAD_MUTEX_INITIALIZER;
-
-
-
-	thread_manager gTheThreadManager;
+thread_manager gTheThreadManager;
+sem_t kill_all_threads;
 
 int main ()
 {
 	char serial_loc[] = "/dev/ttyUSB0";
 	
-	systemPrint(INFO_NONE, "Main", THREAD_ID_MAIN);
-	systemPrint(INFO_NONE, "Nav", THREAD_ID_NAV);
-	systemPrint(INFO_NONE, "Ident Image", THREAD_ID_IDENT_IMAGE);
-	systemPrint(INFO_NONE, "Ident Contour", THREAD_ID_IDENT_CONTOUR);
-	systemPrint(INFO_NONE, "Safety", THREAD_ID_SAFETY);
+	sem_init(&kill_all_threads, 0, 0);
+	
+	for (int i = 0; i < N_THREADS; ++i)
+	{
+		systemPrint(INFO_NONE, threadIdToString((THREAD_ID)i), (THREAD_ID)i);
+	}
+	
 	systemPrint(INFO_NONE, "", THREAD_ID_MAIN);
 	
 	this_thread::sleep_for(chrono::milliseconds(1000));
@@ -52,16 +54,29 @@ int main ()
 	// Let's stream some sensors.
     Create::sensorPackets_t sensors;
     //sensors.push_back(Create::SENSOR_GROUP_1);
-    sensors.push_back (Create::SENSOR_BUTTONS);
-	sensors.push_back(Create::SENSOR_BUMPS_WHEELS_DROPS);
+    sensors.push_back(Create::SENSOR_BUMPS_WHEELS_DROPS);
     sensors.push_back(Create::SENSOR_WALL_SIGNAL);
+    sensors.push_back(Create::SENSOR_CLIFF_LEFT_SIGNAL);
+    sensors.push_back(Create::SENSOR_CLIFF_FRONT_LEFT_SIGNAL);
+    sensors.push_back(Create::SENSOR_CLIFF_FRONT_RIGHT_SIGNAL);
+    sensors.push_back(Create::SENSOR_CLIFF_RIGHT_SIGNAL);
+    sensors.push_back(Create::SENSOR_OVERCURRENTS);
+    sensors.push_back (Create::SENSOR_BUTTONS);
+
+
+	//sensors.push_back(Create::SENSOR_DISTANCE);
+	//sensors.push_back(Create::SENSOR_ANGLE);
+	
     
     robot.sendStreamCommand (sensors);
-	
+
 	systemPrint(INFO_NONE, "Sent Stream Command", THREAD_ID_MAIN);
+	
+	robot.sendSensorsCommand(Create::SENSOR_BATTERY_CHARGE);
+	robot.updateSensors();
 
 	systemPrint(INFO_NONE, "", THREAD_ID_MAIN);
-	systemPrint(INFO_NONE, "Charge: " + to_string(robot.batteryCharge()), THREAD_ID_MAIN);
+	systemPrint(INFO_NONE, "Charge: " + to_string(((unsigned short)robot.batteryCharge())/65535.0F), THREAD_ID_MAIN);
 	systemPrint(INFO_NONE, "", THREAD_ID_MAIN);
 	
 	this_thread::sleep_for(chrono::milliseconds(3000));
@@ -70,20 +85,41 @@ int main ()
 
     paramsForOpenCVImage[0] = &Camera;
     paramsForOpenCVImage[1] = &robot;
+		
+		
+	gTheThreadManager.create_new_thread(safety, THREAD_ID_SAFETY, (void*)&robot, 90);
 	
-	gTheThreadManager.create_new_thread(nav_test, THREAD_ID_NAV, (void*)&robot, 25);
+	gTheThreadManager.create_new_thread(nav_test, THREAD_ID_NAV, (void*)&robot, 80);
 	
-	gTheThreadManager.create_new_thread(open_CV_image, THREAD_ID_IDENT_IMAGE, (void*)paramsForOpenCVImage, 24);
+	//gTheThreadManager.create_new_thread(open_CV_image, THREAD_ID_IDENT_IMAGE, (void*)paramsForOpenCVImage, 70);
 
-	//gTheThreadManager.create_new_thread(safety, THREAD_ID_SAFETY, (void*)&robot, 31);
+	gTheThreadManager.create_new_thread(external, THREAD_ID_EXTERNAL, (void*)&robot, 60);
 
+	sched_param priority;
+	priority.sched_priority = 95;
+ 	pthread_setschedparam(pthread_self(), SCHED_FIFO,&priority);
+
+	bool run = true;
+	while (run)
+	{
+		auto start_time = std::chrono::system_clock::now();
+		auto deadline = start_time + std::chrono::milliseconds(100);
+		
+		lockMtx(MUTEX_ID_SERIAL, THREAD_ID_MAIN);
+		run = !robot.playButton();
+		unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_MAIN);
+		
+		this_thread::sleep_until(deadline);
+	}
+	sem_post(&kill_all_threads);
 	gTheThreadManager.join_all_threads();
-	
+	systemPrint(INFO_NONE, "all threads joined", THREAD_ID_MAIN);
+
 	pthread_mutex_destroy ( &safetyMutex );
 	pthread_mutex_destroy ( &cameraMutex );
 	pthread_mutex_destroy ( &printMutex  );
 	pthread_mutex_destroy ( &serialMutex );
-
+	sem_destroy(&kill_all_threads);
 
 	robot.sendDriveCommand(0, Create::DRIVE_INPLACE_CLOCKWISE);
 	
@@ -100,6 +136,20 @@ int main ()
   }
 	
 	return 0;
+}
+
+bool stop_running_thread(const THREAD_ID Id)
+{
+	int value;
+
+	sem_getvalue(&kill_all_threads, &value);
+
+	systemPrint(INFO_ALL, "sem value:" + to_string(value), Id);
+
+	if(value==0)
+		return false;
+	else
+		return true;
 }
 
 void lockMtx(const MUTEX_ID MtxID, const THREAD_ID Id)
@@ -181,5 +231,24 @@ void systemPrint(const INFO_LEVEL lvl,  const string s, const THREAD_ID id)
 				printf((colors[id]+e.what()+colors[id]+"\n").c_str());
 			}
 		}
+	}
+}
+
+string threadIdToString(const THREAD_ID Id)
+{
+	switch(Id)
+	{
+	case THREAD_ID_MAIN:
+		return "Main";
+	case THREAD_ID_NAV:
+		return "Nav";
+	case THREAD_ID_SAFETY:
+		return "Safety";
+	case THREAD_ID_IDENT_IMAGE:
+		return "Ident Image";
+	case THREAD_ID_EXTERNAL:
+		return "External";
+	default:
+		return "";
 	}
 }
