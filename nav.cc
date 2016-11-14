@@ -7,6 +7,7 @@ using namespace cv;
 
 
 vector<Point2f> wayPoints;
+vector<Point2f> allWayPoints;
 
 Point2f currPoint;
 float angle;
@@ -22,6 +23,9 @@ void* nav_test(void* parms)
 		
 		return nullptr;
 	}
+	
+	lockMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
+	
 	short wallSignal = 0;
 	short prevWallSignal =0;
 	short maxWallSignal = 0;
@@ -29,6 +33,7 @@ void* nav_test(void* parms)
 	
 	Point2f p (0,0);
 	wayPoints.push_back(p);	
+	allWayPoints.push_back(p);
 	
 	auto startTimeForDrive = std::chrono::system_clock::now();
 	
@@ -63,9 +68,12 @@ void* nav_test(void* parms)
 	short currRotateSpeed = 0;
 	short currRotateRadius = 0;
 	
+	chrono::milliseconds lockTime = chrono::milliseconds(0);
+	
 	loop = stop_running_thread(THREAD_ID_NAV);
 	
 	bool wayPointRecorded = false;
+	
 	while (!loop)
     {
 		auto start_time = std::chrono::system_clock::now();
@@ -86,19 +94,23 @@ void* nav_test(void* parms)
 		  wayPointRecorded = false;
 		  systemPrint(INFO_SIMPLE, "Bump", THREAD_ID_NAV);
 		  
-		  updatePosition(startTimeForDrive, currRotateSpeed, currRotateRadius);
+		  lockTime = sendDriveCommand(robot,-SPEED, Create::DRIVE_STRAIGHT);
+		  
+		  updatePosition(startTimeForDrive + lockTime, currRotateSpeed, currRotateRadius);
 		  
 		  recordWaypoint();
 		  
 		  systemPrint(NAV_PRINT_LEVEL, "Starting Backing Up", THREAD_ID_NAV);
 		  
-		  sendDriveCommand(robot,-SPEED, Create::DRIVE_STRAIGHT);
+		  chrono::milliseconds lockTime;
+		  
+		  
 		  startTimeForDrive = std::chrono::system_clock::now();
 		  currRotateRadius = -1;
 		  currRotateSpeed = -SPEED;
 		  this_thread::sleep_for(chrono::milliseconds(30000 / SPEED));
-		  updatePosition(startTimeForDrive, currRotateSpeed, currRotateRadius);
-		  sendDriveCommand(robot,0, Create::DRIVE_STRAIGHT);
+		  lockTime = sendDriveCommand(robot,0, Create::DRIVE_STRAIGHT);
+		  updatePosition(startTimeForDrive + lockTime, currRotateSpeed, currRotateRadius);
 	  
 		  maxWallSignal = find_max_wall_signal(robot);
 		  
@@ -110,15 +122,16 @@ void* nav_test(void* parms)
 	  }
 	  else if(wallSignal <= maxWallSignal - ACCEPTED_OFF_MAX)
 	  {
-		sendDriveCommand(robot,ROTATE_SPEED, -ROTATE_RADIUS);
-		
+		lockTime += sendDriveCommand(robot,ROTATE_SPEED, -ROTATE_RADIUS);
+		  
 		if (currRotateRadius != -ROTATE_RADIUS || currRotateSpeed != ROTATE_SPEED)
 		{
-			updatePosition(startTimeForDrive, currRotateSpeed, currRotateRadius);
+			updatePosition(startTimeForDrive + lockTime, currRotateSpeed, currRotateRadius);
 		
 			startTimeForDrive = std::chrono::system_clock::now();
 			currRotateRadius = -ROTATE_RADIUS;
 			currRotateSpeed = ROTATE_SPEED;
+			lockTime = chrono::milliseconds(0);
 			
 			wayPointRecorded = false;
 			
@@ -127,15 +140,16 @@ void* nav_test(void* parms)
 	  }
 	  else if(wallSignal >= maxWallSignal + ACCEPTED_OFF_MAX)
 	  {
-		sendDriveCommand(robot,ROTATE_SPEED, ROTATE_RADIUS);
+		lockTime += sendDriveCommand(robot,ROTATE_SPEED, ROTATE_RADIUS);
 		
 		if (currRotateRadius != ROTATE_RADIUS || currRotateSpeed != ROTATE_SPEED)
 		{
-			updatePosition(startTimeForDrive, currRotateSpeed, currRotateRadius);
+			updatePosition(startTimeForDrive + lockTime, currRotateSpeed, currRotateRadius);
 
 			startTimeForDrive = std::chrono::system_clock::now();
 			currRotateRadius = ROTATE_RADIUS;
 			currRotateSpeed = ROTATE_SPEED;
+			lockTime = chrono::milliseconds(0);
 			
 			wayPointRecorded = false;
 			
@@ -143,16 +157,17 @@ void* nav_test(void* parms)
 		}
 	  }
 	  else
-	  {
-		 sendDriveCommand(robot,SPEED, Create::DRIVE_STRAIGHT);	
-		 
+	  { 
+		lockTime += sendDriveCommand(robot,SPEED, Create::DRIVE_STRAIGHT);
+		
 		if (currRotateRadius != -1 || currRotateSpeed != SPEED)
 		{	
-			updatePosition(startTimeForDrive, currRotateSpeed, currRotateRadius);
+			updatePosition(startTimeForDrive + lockTime, currRotateSpeed, currRotateRadius);
 
 			startTimeForDrive = std::chrono::system_clock::now();
 			currRotateRadius = -1;
 			currRotateSpeed = SPEED;
+			lockTime = chrono::milliseconds(0);
 			
 			wayPointRecorded = false;
 			
@@ -169,42 +184,85 @@ void* nav_test(void* parms)
 		  }
 	  }
 	  this_thread::sleep_until(deadline);
-	  updatePosition(startTimeForDrive, currRotateSpeed, currRotateRadius);
+
+	  updatePosition(startTimeForDrive + lockTime, currRotateSpeed, currRotateRadius);
+	  lockTime = chrono::milliseconds(0);
 	  startTimeForDrive = std::chrono::system_clock::now();
-	  recordWaypoint();
-/* 	  lockMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
-	  robot->sendSensorsCommand(Create::SENSOR_DISTANCE);
-	  robot->updateSensors();
-	  systemPrint(INFO_NONE, to_string(robot->distance()), THREAD_ID_NAV);
-	  unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV); */
+	  allWayPoints.push_back(currPoint);
+
 	  prevWallSignal = wallSignal;
+	  
+	  unlkMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
+	  this_thread::sleep_for(chrono::milliseconds(1));
+	  auto startLockTime = chrono::system_clock::now();
+	  lockMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
+	  chrono::milliseconds camLockTime = chrono::duration_cast<chrono::milliseconds>(std::chrono::system_clock::now() - startLockTime);
+	  if (camLockTime >= MIN_LOCK_TIME)
+	  {
+		  updatePosition(startTimeForDrive + camLockTime, currRotateSpeed, currRotateRadius);
+		  currRotateSpeed = 0;
+		  currRotateRadius = -1;
+	  }
 	}
 	
-	sendDriveCommand(robot,0, ROTATE_RADIUS);
+	unlkMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
+	lockTime = sendDriveCommand(robot,0, ROTATE_RADIUS);
+	updatePosition(startTimeForDrive + lockTime, currRotateSpeed, currRotateRadius);
+	recordWaypoint();
 	plotWayPoints();
 	return nullptr;
   }
 
-void sendDriveCommand(Create* robot, const int speed, Create::DriveCommand direction)
+chrono::milliseconds sendDriveCommand(Create* robot, const int speed, Create::DriveCommand direction)
 {
-	lockMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
+	auto startLockTime = std::chrono::system_clock::now();
+	chrono::milliseconds lockTime;
+	
+	//lockMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
 	lockMtx(MUTEX_ID_SAFETY, THREAD_ID_NAV);
 	lockMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
 	robot->sendDriveCommand(speed, direction);
+	lockTime = chrono::duration_cast<chrono::milliseconds>(std::chrono::system_clock::now() - startLockTime);
 	unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
 	unlkMtx(MUTEX_ID_SAFETY, THREAD_ID_NAV);
-	unlkMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
+	//unlkMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
+	
+	if (lockTime <= MIN_LOCK_TIME)
+	{
+		lockTime = chrono::milliseconds(0);
+	}
+	else
+	{
+		lockTime = lockTime; //- MIN_LOCK_TIME;
+	}
+	
+	return lockTime;
 }
 
-void sendDriveCommand(Create* robot, const int speed, short radius)
+chrono::milliseconds sendDriveCommand(Create* robot, const int speed, short radius)
 {	
-	lockMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
+	auto startLockTime = std::chrono::system_clock::now();
+	chrono::milliseconds lockTime;
+	
+	//lockMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
 	lockMtx(MUTEX_ID_SAFETY, THREAD_ID_NAV);
+	lockTime = chrono::duration_cast<chrono::milliseconds>(std::chrono::system_clock::now() - startLockTime);
 	lockMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
 	robot->sendDriveCommand(speed, radius);
 	unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
 	unlkMtx(MUTEX_ID_SAFETY, THREAD_ID_NAV);
-	unlkMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
+	//unlkMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
+	
+	if (lockTime <= MIN_LOCK_TIME)
+	{
+		lockTime = chrono::milliseconds(0);
+	}
+	else
+	{
+		lockTime = lockTime - MIN_LOCK_TIME;
+	}
+	
+	return lockTime;
 }
 
 int find_max_wall_signal(Create* robot)
@@ -218,9 +276,13 @@ int find_max_wall_signal(Create* robot)
 	
 	bool first_time = true;
 	
+	chrono::milliseconds lockTime;
+	
 	systemPrint(INFO_SIMPLE, "Spinning to Parallel", THREAD_ID_NAV);
 	  
-	  for (int i = 0; i < 40000 / ROTATE_SPEED; ++i)
+	  const int NUM_INIT_SLEEPS = 0;
+	  
+	  for (int i = 0; i < 60000 / ROTATE_SPEED; ++i)
 	  {
 		killThread = stop_running_thread(THREAD_ID_NAV);
 		
@@ -229,12 +291,13 @@ int find_max_wall_signal(Create* robot)
 			return 1;
 		}
 		
-	    sendDriveCommand(robot,ROTATE_SPEED, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+	    lockTime = sendDriveCommand(robot,ROTATE_SPEED, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
 		auto startDriveTime = std::chrono::system_clock::now();
 		this_thread::sleep_for(chrono::milliseconds(15));
-		if (!first_time)
+		if (i >= NUM_INIT_SLEEPS)
 		{
-			updatePosition(startDriveTime, ROTATE_SPEED, 0);
+			updatePosition(startDriveTime + lockTime, ROTATE_SPEED, 0);
+			startDriveTime = std::chrono::system_clock::now();
 		}
 		prevWallSignal = wallSignal;
 		
@@ -248,10 +311,12 @@ int find_max_wall_signal(Create* robot)
 		{
 			inc = true;
 		}
-		if (inc && wallSignal < prevWallSignal && wallSignal<40)
+		if (inc && wallSignal < prevWallSignal && wallSignal<40 && wallSignal > ACCEPTED_OFF_MAX)
 		{
 			maxWallSignal = prevWallSignal;
 			systemPrint(INFO_SIMPLE, "Found local maximum: " + to_string(maxWallSignal), THREAD_ID_NAV);
+			lockTime = sendDriveCommand(robot,0, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+			updatePosition(startDriveTime + lockTime, ROTATE_SPEED, 0);
 			break;
 		}
 	  }
@@ -267,6 +332,15 @@ void updatePosition(chrono::system_clock::time_point startTimeForDrive, short cu
 	float angleOfRotation =  0;
 	const float ROBOT_DRIFT = 0;//2.5f;
 	const double PI = acos(0.0)*2;
+	
+	if (currRotateRadius == ROTATE_RADIUS)
+	{
+		currRotateRadius += ROTATE_RADIUS_CORRECTION;
+	}
+	else if (currRotateRadius == -ROTATE_RADIUS)
+	{
+		currRotateRadius -= ROTATE_RADIUS_CORRECTION;
+	}
 	
 	if (currRotateRadius != 0)
 	{
@@ -311,84 +385,125 @@ void updatePosition(chrono::system_clock::time_point startTimeForDrive, short cu
 	currPoint.x += delta_x;
 	currPoint.y += delta_y;
 }
-void recordWaypoint()
+bool recordWaypoint()
 {
 	float delta_x = currPoint.x-wayPoints.back().x;
 	float delta_y = currPoint.y-wayPoints.back().y;
 	
-	systemPrint(INFO_SIMPLE, (string)"Created Waypoint " + to_string(wayPoints.size()) + (string)" delta(x): " + to_string(delta_x) + (string)" delta(y): " + to_string(delta_y), THREAD_ID_NAV);
-	systemPrint(INFO_SIMPLE, (string)"                 Angle: " + to_string(angle), THREAD_ID_NAV);
-
+	float distance = delta_x*delta_x + delta_y*delta_y;
 	
-	wayPoints.push_back(currPoint);
+	if (distance >= MIN_MM_BETWEEN_WP*MIN_MM_BETWEEN_WP || SHOW_ALL_WP)
+	{
+		systemPrint(INFO_SIMPLE, (string)"Created Waypoint " + to_string(wayPoints.size()) + (string)" delta(x): " + to_string(delta_x) + (string)" delta(y): " + to_string(delta_y), THREAD_ID_NAV);
+		systemPrint(INFO_SIMPLE, (string)"                 Angle: " + to_string(angle), THREAD_ID_NAV);
+
+		
+		wayPoints.push_back(currPoint);
+		return true;
+	}
+	
+	return false;
 }
 void plotWayPoints()
 {
 	const int MARGIN = 10;
 	const short IMAGE_SIZE = 1200;
 	
-	Point2f maxNegWaypoint(0,0);
+	Point2f maxNegWaypoint(allWayPoints[0]);
+	
 	float maxSize = 0;
 	
-	for (int i = 0; i  < wayPoints.size(); ++i)
+	for (int i = 0; i  < allWayPoints.size(); ++i)
 	{
-		wayPoints[i].y = -wayPoints[i].y;
+		if (i < wayPoints.size())
+			wayPoints[i].y = -wayPoints[i].y;
+		allWayPoints[i].y = -allWayPoints[i].y;
 	}
-	for (int i = 0; i  < wayPoints.size(); ++i)
+	for (int i = 0; i  < allWayPoints.size(); ++i)
 	{
-		if (maxNegWaypoint.x > wayPoints[i].x)
+		if (maxNegWaypoint.x > allWayPoints[i].x)
 		{
-			maxNegWaypoint.x = wayPoints[i].x;
+			maxNegWaypoint.x = allWayPoints[i].x;
 		}
-		if (maxNegWaypoint.y > wayPoints[i].y)
+		if (maxNegWaypoint.y > allWayPoints[i].y)
 		{
-			maxNegWaypoint.y = wayPoints[i].y;
+			maxNegWaypoint.y = allWayPoints[i].y;
 		}
 	}
-	for (int i = 0; i  < wayPoints.size(); ++i)
+	for (int i = 0; i  < allWayPoints.size(); ++i)
 	{
-		wayPoints[i].x -= maxNegWaypoint.x - MARGIN;
-		wayPoints[i].y -= maxNegWaypoint.y - MARGIN;
+		if (i < wayPoints.size())
+		{
+			wayPoints[i].x -= maxNegWaypoint.x - MARGIN;
+			wayPoints[i].y -= maxNegWaypoint.y - MARGIN;
+		}
+		allWayPoints[i].x -= maxNegWaypoint.x - MARGIN;
+		allWayPoints[i].y -= maxNegWaypoint.y - MARGIN;
 	}
 	
-	for (int i = 0; i  < wayPoints.size(); ++i)
+	for (int i = 0; i  < allWayPoints.size(); ++i)
 	{
-		if (maxSize < abs(wayPoints[i].x))
+		if (maxSize < abs(allWayPoints[i].x))
 		{
-			maxSize = abs(wayPoints[i].x);
+			maxSize = abs(allWayPoints[i].x);
 		}
-		if (maxSize < abs(wayPoints[i].y))
+		if (maxSize < abs(allWayPoints[i].y))
 		{
-			maxSize = abs(wayPoints[i].y);
+			maxSize = abs(allWayPoints[i].y);
 		}
 	}
 	
-	for (int i = 0; i  < wayPoints.size(); ++i)
+	for (int i = 0; i  < allWayPoints.size(); ++i)
 	{
-		wayPoints[i].x *= (IMAGE_SIZE-2*MARGIN)/maxSize;
-		wayPoints[i].y *= (IMAGE_SIZE-2*MARGIN)/maxSize;
+		if (i < wayPoints.size())
+		{
+			wayPoints[i].x *= (IMAGE_SIZE-2*MARGIN)/maxSize;
+			wayPoints[i].y *= (IMAGE_SIZE-2*MARGIN)/maxSize;
+		}
+		
+		allWayPoints[i].x *= (IMAGE_SIZE-2*MARGIN)/maxSize;
+		allWayPoints[i].y *= (IMAGE_SIZE-2*MARGIN)/maxSize;
 	}
-	
-	Rect sizeAfterScale = boundingRect(wayPoints);
+
+	Rect sizeAfterScale = boundingRect(allWayPoints);
 	
 	systemPrint(INFO_SIMPLE, "Ploting Waypoints", THREAD_ID_NAV);
 	// Create a drawing context, and use white background.
 	Mat img_output(sizeAfterScale.height + 2*MARGIN, sizeAfterScale.width + 2*MARGIN, CV_8UC3, Scalar(255, 255, 255));
+	Mat img_output_simpl(sizeAfterScale.height + 2*MARGIN, sizeAfterScale.width + 2*MARGIN, CV_8UC3, Scalar(255, 255, 255));
 	// Plot the waypoints using blue color.
 	Scalar lineColor(255, 0, 0);
+	Scalar allLineColor(0, 0, 255, 100);
 	int lineWidth = 1;
 	int radius = 3;
 	for (int i = 0; i < wayPoints.size() - 1; i++) {
-	line(img_output, wayPoints[i], wayPoints[i + 1],
-	lineColor, lineWidth, CV_AA);
-	circle(img_output, wayPoints[i], radius,
-	lineColor, CV_FILLED, CV_AA);
-	systemPrint(NAV_PRINT_LEVEL, (string)"Waypoint " + to_string(i) + (string)": (" + to_string(wayPoints[i].x) +(string)", " + to_string(wayPoints[i].y) + (string)")", THREAD_ID_NAV);
+		line(img_output, wayPoints[i], wayPoints[i + 1],
+		lineColor, lineWidth, CV_AA);
+		circle(img_output, wayPoints[i], radius,
+		lineColor, CV_FILLED, CV_AA);
+		
+		line(img_output_simpl, wayPoints[i], wayPoints[i + 1],
+		lineColor, lineWidth, CV_AA);
+		circle(img_output_simpl, wayPoints[i], radius,
+		lineColor, CV_FILLED, CV_AA);
+		
+		systemPrint(NAV_PRINT_LEVEL, (string)"Waypoint " + to_string(i) + (string)": (" + to_string(wayPoints[i].x) +(string)", " + to_string(wayPoints[i].y) + (string)")", THREAD_ID_NAV);
 	}
+	for (int i = 0; i < allWayPoints.size() - 1; i++) {
+		line(img_output, allWayPoints[i], allWayPoints[i + 1],
+		allLineColor, lineWidth, CV_AA);
+		circle(img_output, allWayPoints[i], radius,
+		allLineColor, CV_FILLED, CV_AA);
+		systemPrint(NAV_PRINT_LEVEL, (string)"Waypoint " + to_string(i) + (string)": (" + to_string(allWayPoints[i].x) +(string)", " + to_string(allWayPoints[i].y) + (string)")", THREAD_ID_NAV);
+	}
+	
 	// Draw the bounding rectangle using orange color
 	Rect bound = boundingRect(wayPoints);
-	rectangle(img_output, bound, Scalar(0, 165, 255));
+	Rect bound2 = boundingRect(allWayPoints);
+	rectangle(img_output, bound2, Scalar(0, 165, 255));
+	rectangle(img_output_simpl, bound, Scalar(0, 165, 255));
 	// Finally store it as a png file
 	imwrite("irobot_plot.png", img_output);
+	imwrite("irobot_plot_simplified.png", img_output_simpl);
 	systemPrint(INFO_SIMPLE, "Waypoints plotted", THREAD_ID_NAV);
 }

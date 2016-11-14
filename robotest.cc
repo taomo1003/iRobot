@@ -91,10 +91,10 @@ int main ()
 	
 	gTheThreadManager.create_new_thread(nav_test, THREAD_ID_NAV, (void*)&robot, 80);
 	
-	//gTheThreadManager.create_new_thread(open_CV_image, THREAD_ID_IDENT_IMAGE, (void*)paramsForOpenCVImage, 70);
-
-	gTheThreadManager.create_new_thread(external, THREAD_ID_EXTERNAL, (void*)&robot, 60);
-
+	gTheThreadManager.create_new_thread(open_CV_image, THREAD_ID_IDENT_IMAGE, (void*)paramsForOpenCVImage, 70);
+	
+	gTheThreadManager.create_new_thread(external, THREAD_ID_EXTERNAL, (void*)&robot, 95);
+	
 	sched_param priority;
 	priority.sched_priority = 95;
  	pthread_setschedparam(pthread_self(), SCHED_FIFO,&priority);

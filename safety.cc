@@ -56,14 +56,14 @@ void* safety(void* parms)
 		else if(overcurrentsensor >0)
 			overcurrentsensor--;
 		
-		if(cliffL<5 || cliffR<5 || cliffLF<5|| cliffRF<5 || overcurrentsensor>10)
+		if(cliffL<5 || cliffR<5 || cliffLF<5|| cliffRF<5 || overcurrentsensor>5)
 		{
 			SafteySensorFired = true;
 		}
 		//if a safety sencer is fired stop the robot.
 		if(SafteySensorFired ||overcurrent)
 		{
-			if(overcurrentsensor > 10)
+			if(overcurrentsensor > 5)
 			{
 				overcurrent=true;
 			}
