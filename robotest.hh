@@ -56,13 +56,14 @@ string threadIdToString(const THREAD_ID Id);
 class thread_manager
 {
 private:
-	pthread_t callThd[N_THREADS];
-	sched_param sch_params[N_THREADS];
-	bool madeThreads[N_THREADS];
+	vector<pthread_t> callThd;
+	vector<sched_param> sch_params;
+	vector<bool> madeThreads;
 protected:
-	void create_thread(void*(*func)(void*), THREAD_ID Id, void* params,int p)
+	void create_thread(void*(*func)(void*), int Id, void* params,int p, bool printInfo)
 	{
-		systemPrint(INFO_SIMPLE, "Creating thread " + threadIdToString(Id), THREAD_ID_MAIN);
+		if (printInfo)
+			systemPrint(INFO_SIMPLE, "Creating thread " + threadIdToString((THREAD_ID)Id), THREAD_ID_MAIN);
 		
 		pthread_attr_t tattr;
 		sched_param param;
@@ -75,45 +76,64 @@ protected:
 
 		/* set the priority; others are unchanged */
 		param.sched_priority = p;
+		pthread_attr_setschedpolicy(&tattr, SCHED_FIFO);
+		if (p < 0)
+		{
+			pthread_attr_setschedpolicy(&tattr, SCHED_IDLE);
+			param.sched_priority = 10;
+		}
 
 		/* setting the new scheduling param */
+		while (callThd.size() <= Id)
+		{
+			pthread_t tmp;
+			callThd.push_back(tmp);
+		}
 		pthread_attr_setschedparam (&tattr, &param);
 		pthread_create(&callThd[Id], &tattr, func, params);
 	}
-	void set_thread_priority(THREAD_ID Id, const int priority)
+	void set_thread_priority(int Id, const int priority)
 	{
+		while (sch_params.size() <= Id)
+		{
+			sched_param tmp;
+			sch_params.push_back(tmp);
+		}
+		
 		sch_params[Id].sched_priority = priority;	
 		int status = pthread_setschedparam(callThd[Id], SCHED_FIFO, &sch_params[Id]);
 		if (status != 0)
 		{
-			systemPrint(INFO_NONE, "Failed to Set Thread Priority For Thread " + threadIdToString(Id), THREAD_ID_MAIN);
+			systemPrint(INFO_NONE, "Failed to Set Thread Priority For Thread " + threadIdToString((THREAD_ID)Id), THREAD_ID_MAIN);
 		}
 	}
-	void join_thread(THREAD_ID Id)
+	void join_thread(int Id, bool printInfo)
 	{
 		pthread_join(callThd[Id], NULL);
-		systemPrint(INFO_SIMPLE, "Joining thread " + threadIdToString(Id), THREAD_ID_MAIN);
+		if (printInfo)
+			systemPrint(INFO_SIMPLE, "Joining thread " + threadIdToString((THREAD_ID)Id), THREAD_ID_MAIN);
 	}
 public:
 	thread_manager()
 	{
-		for (int i = 0; i < N_THREADS; ++i)
-		{
-			madeThreads[i] = false;
-		}
+
 	}
-	void create_new_thread(void*(*func)(void*), THREAD_ID Id, void* params, int priority)
+	void create_new_thread(void*(*func)(void*), int Id, void* params, int priority, bool printInfo = true)
 	{
-		create_thread(func, Id, params, priority);
+		create_thread(func, Id, params, priority, printInfo);
 		//set_thread_priority(Id, priority);
+		while(madeThreads.size() <= Id)
+		{
+			madeThreads.push_back(false);
+		}
 		madeThreads[Id] = true;
 	}
-	void join_all_threads()
+	void join_all_threads(bool printInfo = true)
 	{
-		for (int i = 0; i < N_THREADS; ++i)
+		for (int i = 0; i < callThd.size(); ++i)
 		{
 			if (madeThreads[i])
-				join_thread((THREAD_ID)i);
+				join_thread(i, printInfo);
 		}
 	}
 };
@@ -122,5 +142,7 @@ bool stop_running_thread(const THREAD_ID Id);
 
 void lockMtx(const MUTEX_ID MtxID, const THREAD_ID Id);
 void unlkMtx(const MUTEX_ID MtxID, const THREAD_ID Id);
+void endMission(const THREAD_ID Id, Create* r);
+
 
 #endif

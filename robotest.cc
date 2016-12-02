@@ -87,31 +87,40 @@ int main ()
     paramsForOpenCVImage[1] = &robot;
 		
 		
-	gTheThreadManager.create_new_thread(safety, THREAD_ID_SAFETY, (void*)&robot, 90);
+	gTheThreadManager.create_new_thread(safety, THREAD_ID_SAFETY, (void*)&robot, 95);
 	
-	gTheThreadManager.create_new_thread(nav_test, THREAD_ID_NAV, (void*)&robot, 80);
+	gTheThreadManager.create_new_thread(nav_test, THREAD_ID_NAV, (void*)&robot, 94);
 	
-	gTheThreadManager.create_new_thread(open_CV_image, THREAD_ID_IDENT_IMAGE, (void*)paramsForOpenCVImage, 70);
+	gTheThreadManager.create_new_thread(open_CV_image, THREAD_ID_IDENT_IMAGE, (void*)paramsForOpenCVImage, 93);
 	
-	gTheThreadManager.create_new_thread(external, THREAD_ID_EXTERNAL, (void*)&robot, 95);
+	gTheThreadManager.create_new_thread(external, THREAD_ID_EXTERNAL, (void*)&robot, 60);
 	
 	sched_param priority;
 	priority.sched_priority = 95;
  	pthread_setschedparam(pthread_self(), SCHED_FIFO,&priority);
 
+ 	auto two_min_count = chrono::system_clock::now();
+
 	bool run = true;
 	while (run)
 	{
+		auto new_time_2_min = chrono::system_clock::now();
 		auto start_time = std::chrono::system_clock::now();
 		auto deadline = start_time + std::chrono::milliseconds(100);
 		
 		lockMtx(MUTEX_ID_SERIAL, THREAD_ID_MAIN);
-		run = !robot.playButton();
+
+
+		run = (chrono::milliseconds(115000) > (chrono::duration_cast<chrono::milliseconds>(new_time_2_min - two_min_count)) &&
+			   (!robot.playButton()) &&
+			   (!stop_running_thread(THREAD_ID_MAIN)));
 		unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_MAIN);
 		
 		this_thread::sleep_until(deadline);
 	}
-	sem_post(&kill_all_threads);
+	 auto stopTime = chrono::system_clock::now();
+	systemPrint(INFO_NONE, "Mission Time:" +to_string((float)chrono::duration_cast<chrono::milliseconds>(stopTime - two_min_count).count() / 1000.0f), THREAD_ID_MAIN);
+	endMission(THREAD_ID_MAIN,&robot);
 	gTheThreadManager.join_all_threads();
 	systemPrint(INFO_NONE, "all threads joined", THREAD_ID_MAIN);
 
@@ -204,6 +213,14 @@ void unlkMtx(const MUTEX_ID MtxID, const THREAD_ID Id)
 	{
 		systemPrint(INFO_NONE, "void unlkMtx(const MUTEX_ID MtxID) :::: Undefined MtxID", Id);
 	}
+}
+void endMission(const THREAD_ID id, Create* r)
+{
+	sem_post(&kill_all_threads);
+	lockMtx(MUTEX_ID_SERIAL, THREAD_ID_MAIN); //here we are
+	r->sendLedCommand(Create::LED_NONE, Create::LED_COLOR_RED, Create::LED_INTENSITY_FULL);
+	unlkMtx(MUTEX_ID_SERIAL, THREAD_ID_MAIN);
+	systemPrint(INFO_NONE,"Mission Ended By " + threadIdToString(id), id);
 }
 void systemPrint(const INFO_LEVEL lvl,  const string s, const THREAD_ID id)
 {

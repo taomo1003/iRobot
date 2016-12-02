@@ -7,7 +7,7 @@ using namespace std;
 void* external(void* parms) 
 {	
 	pid_t pid = 1;
-	char *execArgs[] = { "runBinary", NULL };
+	char *execArgs[] = { (char*)"runBinary", NULL };
 	
 	for (int i = 0; i < 100; ++i)
 	{

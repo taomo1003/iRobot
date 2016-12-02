@@ -16,9 +16,15 @@ point(double nX, double nY):x(nX),y(nY){};
 	double y;
 };
 
-const int ROTATE_SPEED = 200;
-const short ROTATE_RADIUS = 400;
-const short SPEED = 200;
+const int ROTATE_SPEED = 150;
+const short SPEED = 150;
+
+const short NAV_MAX_WALL_SIGNAL_SEARCH = 1;
+const short NAV_MAX_WALL_SIGNAL_SLEEP_TIME = 15;
+
+const short MAX_ROTATE_RADIUS = 1600;
+const short MIN_ROTATE_RADIUS = 400;
+
 const short ROBOT_RADIUS = 126;
 const short ROTATE_RADIUS_CORRECTION = 45;
 const short MIN_MM_BETWEEN_WP = 100;

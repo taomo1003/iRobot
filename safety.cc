@@ -27,7 +27,7 @@ void* safety(void* parms)
 	while(!loop)
 	{
 		auto start_time = std::chrono::system_clock::now();
-		auto deadline = start_time + std::chrono::milliseconds(100);
+		auto deadline = start_time + std::chrono::milliseconds(16); // SMALLER
 
 		loop = stop_running_thread(THREAD_ID_SAFETY);
 		lockMtx(MUTEX_ID_SERIAL, THREAD_ID_SAFETY);

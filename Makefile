@@ -1,5 +1,10 @@
 all:
-	g++ -std=c++11 -o robotest robotest.cc robovision.cc open_CV_image.cc nav.cc safety.cc irobot-create.cc external.cpp -pthread -L/opt/vc/lib -lserial -lraspicam -lraspicam_cv -lmmal -lmmal_core -lmmal_util -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -lopencv_xfeatures2d -lopencv_calib3d -lopencv_features2d 
-
+	g++ -std=c++11 -c robotest.cc -pthread -L/opt/vc/lib -lserial -lraspicam -lraspicam_cv -lmmal -lmmal_core -lmmal_util -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -lopencv_xfeatures2d -lopencv_calib3d -lopencv_features2d 
+	g++ -std=c++11 -c nav.cc -pthread -L/opt/vc/lib -lserial -lraspicam -lraspicam_cv -lmmal -lmmal_core -lmmal_util -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -lopencv_xfeatures2d -lopencv_calib3d -lopencv_features2d 
+	g++ -std=c++11 -c safety.cc -pthread -L/opt/vc/lib -lserial -lraspicam -lraspicam_cv -lmmal -lmmal_core -lmmal_util -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -lopencv_xfeatures2d -lopencv_calib3d -lopencv_features2d 
+	g++ -std=c++11 -c external.cpp -pthread -L/opt/vc/lib -lserial -lraspicam -lraspicam_cv -lmmal -lmmal_core -lmmal_util -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -lopencv_xfeatures2d -lopencv_calib3d -lopencv_features2d 
+	g++ -std=c++11 -c robovision.cc -pthread -L/opt/vc/lib -lserial -lraspicam -lraspicam_cv -lmmal -lmmal_core -lmmal_util -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -lopencv_xfeatures2d -lopencv_calib3d -lopencv_features2d 
+	g++ -std=c++11 -c open_CV_image.cc -pthread -L/opt/vc/lib -lserial -lraspicam -lraspicam_cv -lmmal -lmmal_core -lmmal_util -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -lopencv_xfeatures2d -lopencv_calib3d -lopencv_features2d 
+	g++ -std=c++11 -o robotest robotest.o robovision.o open_CV_image.o nav.o safety.o irobot-create.o external.o -pthread -L/opt/vc/lib -lserial -lraspicam -lraspicam_cv -lmmal -lmmal_core -lmmal_util -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -lopencv_xfeatures2d -lopencv_calib3d -lopencv_features2d 
 clean:
 	rm robotest

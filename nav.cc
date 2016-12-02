@@ -41,7 +41,7 @@ void* nav_test(void* parms)
 	while(!loop)
 	{
 		auto start_time = std::chrono::system_clock::now();
-		auto deadline = start_time + std::chrono::milliseconds(100);
+		auto deadline = start_time + std::chrono::milliseconds(15);
 		
 		sendDriveCommand(robot,SPEED, Create::DRIVE_STRAIGHT);
 		
@@ -77,7 +77,7 @@ void* nav_test(void* parms)
 	while (!loop)
     {
 		auto start_time = std::chrono::system_clock::now();
-		auto deadline = start_time + std::chrono::milliseconds(100);
+		auto deadline = start_time + std::chrono::milliseconds(15);
 		
 	  loop = stop_running_thread(THREAD_ID_NAV);
 	  lockMtx(MUTEX_ID_SERIAL, THREAD_ID_NAV);
@@ -88,6 +88,18 @@ void* nav_test(void* parms)
 	  
 	  systemPrint(INFO_ALL, to_string(wallSignal), THREAD_ID_NAV);
 	  
+	  float percentDifference = 1.0F - abs(maxWallSignal - (float)wallSignal)/maxWallSignal;
+	  
+	  if (percentDifference < 0.0F)
+	  {
+		  percentDifference = 0.0F;
+	  }
+	  else if (percentDifference > 1.0F)
+	  {
+		  percentDifference = 1.0F;
+	  }
+	  
+	  short rotate_radius = (short)(percentDifference * (MAX_ROTATE_RADIUS - MIN_ROTATE_RADIUS) + MIN_ROTATE_RADIUS);
 	  
 	  if( bBumpLeft || bBumpRight )
 	  {
@@ -120,41 +132,27 @@ void* nav_test(void* parms)
 		  currRotateRadius = -1;
 		  currRotateSpeed = SPEED;
 	  }
-	  else if(wallSignal <= maxWallSignal - ACCEPTED_OFF_MAX)
+	  else if(abs(maxWallSignal - wallSignal) >= ACCEPTED_OFF_MAX)
 	  {
-		lockTime += sendDriveCommand(robot,ROTATE_SPEED, -ROTATE_RADIUS);
-		  
-		if (currRotateRadius != -ROTATE_RADIUS || currRotateSpeed != ROTATE_SPEED)
+		if (maxWallSignal - wallSignal > 0)
 		{
-			updatePosition(startTimeForDrive + lockTime, currRotateSpeed, currRotateRadius);
-		
-			startTimeForDrive = std::chrono::system_clock::now();
-			currRotateRadius = -ROTATE_RADIUS;
-			currRotateSpeed = ROTATE_SPEED;
-			lockTime = chrono::milliseconds(0);
-			
-			wayPointRecorded = false;
-			
-			systemPrint(NAV_PRINT_LEVEL, "Starting C Arc", THREAD_ID_NAV);
+			rotate_radius = -rotate_radius;
 		}
-	  }
-	  else if(wallSignal >= maxWallSignal + ACCEPTED_OFF_MAX)
-	  {
-		lockTime += sendDriveCommand(robot,ROTATE_SPEED, ROTATE_RADIUS);
 		
-		if (currRotateRadius != ROTATE_RADIUS || currRotateSpeed != ROTATE_SPEED)
+		if (maxWallSignal - wallSignal < 0 && currRotateRadius < 0)
 		{
-			updatePosition(startTimeForDrive + lockTime, currRotateSpeed, currRotateRadius);
-
-			startTimeForDrive = std::chrono::system_clock::now();
-			currRotateRadius = ROTATE_RADIUS;
-			currRotateSpeed = ROTATE_SPEED;
-			lockTime = chrono::milliseconds(0);
-			
 			wayPointRecorded = false;
-			
-			systemPrint(NAV_PRINT_LEVEL, "Starting CC Arc", THREAD_ID_NAV);
 		}
+		
+		systemPrint(NAV_PRINT_LEVEL, "Turn Radius " + to_string(rotate_radius), THREAD_ID_NAV);
+		lockTime += sendDriveCommand(robot,ROTATE_SPEED, rotate_radius);
+		updatePosition(startTimeForDrive + lockTime, currRotateSpeed, currRotateRadius);
+		
+		startTimeForDrive = std::chrono::system_clock::now();
+		
+		lockTime = chrono::milliseconds(0);
+		currRotateRadius = rotate_radius;
+		currRotateSpeed = ROTATE_SPEED;
 	  }
 	  else
 	  { 
@@ -206,7 +204,7 @@ void* nav_test(void* parms)
 	}
 	
 	unlkMtx(MUTEX_ID_CAMERA, THREAD_ID_NAV);
-	lockTime = sendDriveCommand(robot,0, ROTATE_RADIUS);
+	lockTime = sendDriveCommand(robot,0, MIN_ROTATE_RADIUS);
 	updatePosition(startTimeForDrive + lockTime, currRotateSpeed, currRotateRadius);
 	recordWaypoint();
 	plotWayPoints();
@@ -272,6 +270,8 @@ int find_max_wall_signal(Create* robot)
 	short prevWallSignal = 0;
 	bool inc = false;
 	
+	short numTimesDecreasing = 0;
+	
 	bool killThread = stop_running_thread(THREAD_ID_NAV);
 	
 	bool first_time = true;
@@ -293,7 +293,7 @@ int find_max_wall_signal(Create* robot)
 		
 	    lockTime = sendDriveCommand(robot,ROTATE_SPEED, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
 		auto startDriveTime = std::chrono::system_clock::now();
-		this_thread::sleep_for(chrono::milliseconds(15));
+		this_thread::sleep_for(chrono::milliseconds(NAV_MAX_WALL_SIGNAL_SLEEP_TIME));
 		if (i >= NUM_INIT_SLEEPS)
 		{
 			updatePosition(startDriveTime + lockTime, ROTATE_SPEED, 0);
@@ -311,33 +311,54 @@ int find_max_wall_signal(Create* robot)
 		{
 			inc = true;
 		}
-		if (inc && wallSignal < prevWallSignal && wallSignal<40 && wallSignal > ACCEPTED_OFF_MAX)
+		if (inc && wallSignal < prevWallSignal  && wallSignal > ACCEPTED_OFF_MAX)
 		{
-			maxWallSignal = prevWallSignal;
-			systemPrint(INFO_SIMPLE, "Found local maximum: " + to_string(maxWallSignal), THREAD_ID_NAV);
+			if (numTimesDecreasing == 0)
+			{
+				maxWallSignal = prevWallSignal;
+				systemPrint(INFO_SIMPLE, "Found local maximum: " + to_string(maxWallSignal), THREAD_ID_NAV);
+			}
+			++numTimesDecreasing;
+			
+		}
+		else if (numTimesDecreasing >= NAV_MAX_WALL_SIGNAL_SEARCH)
+		{
+			lockTime = sendDriveCommand(robot,-ROTATE_SPEED, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+			updatePosition(startDriveTime + lockTime, ROTATE_SPEED, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+			startDriveTime = std::chrono::system_clock::now();
+			
+			this_thread::sleep_for(chrono::milliseconds(NAV_MAX_WALL_SIGNAL_SLEEP_TIME * (NAV_MAX_WALL_SIGNAL_SEARCH - 1)));
+			
 			lockTime = sendDriveCommand(robot,0, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
-			updatePosition(startDriveTime + lockTime, ROTATE_SPEED, 0);
+			updatePosition(startDriveTime + lockTime, -ROTATE_SPEED, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+			
 			break;
+		}
+		else
+		{
+			if (numTimesDecreasing > 0)
+			{
+				--numTimesDecreasing;
+			}
 		}
 	  }
 	  systemPrint(INFO_SIMPLE, "Done", THREAD_ID_NAV);
 	  sendDriveCommand(robot,0, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
 	  
-	  return maxWallSignal;
+	  return (int)(maxWallSignal * 0.3);
 }
 void updatePosition(chrono::system_clock::time_point startTimeForDrive, short currRotateSpeed, short currRotateRadius)
 {
 	float driveTime = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - startTimeForDrive).count() / 1000.0f;
 	
 	float angleOfRotation =  0;
-	const float ROBOT_DRIFT = 0;//2.5f;
 	const double PI = acos(0.0)*2;
 	
-	if (currRotateRadius == ROTATE_RADIUS)
+	if (currRotateRadius >= MIN_ROTATE_RADIUS)
 	{
 		currRotateRadius += ROTATE_RADIUS_CORRECTION;
 	}
-	else if (currRotateRadius == -ROTATE_RADIUS)
+	else if (currRotateRadius <= -MIN_ROTATE_RADIUS)
 	{
 		currRotateRadius -= ROTATE_RADIUS_CORRECTION;
 	}
@@ -355,8 +376,6 @@ void updatePosition(chrono::system_clock::time_point startTimeForDrive, short cu
 	{
 		angleOfRotation = 0;
 	}
-	
-	angleOfRotation += ROBOT_DRIFT*driveTime;
 	
 	float oldAngle = angle;
 	angle += angleOfRotation;

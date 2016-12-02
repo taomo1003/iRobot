@@ -21,4 +21,6 @@ enum IMAGE_THREAD_ID:int
 void* imageThreadFun(void* params);
 void* open_CV_image(void* params);
 
+void* indent_post(void* params);
+
 #endif

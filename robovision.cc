@@ -51,7 +51,6 @@ int ident( vector<string>& argv1, string argv2) {
 
  
     for (unsigned i = 0; i < argv1.size(); ++i){
-      if (stop_running_thread(THREAD_ID_IDENT_IMAGE)) break;
       Mat img_query = imread(argv1[i], IMREAD_GRAYSCALE);
       if(!img_query.data) {
       systemPrint(INFO_SIMPLE, "Error reading images", THREAD_ID_IDENT_IMAGE);
@@ -110,7 +109,6 @@ int ident( vector<string>& argv1, string argv2) {
        result = 1;
        cv::imwrite(argv1[i].substr(33).c_str(), img_matches);
        argv1.erase(argv1.begin()+i);
-       break;
      } else {
        systemPrint(INFO_NONE, "Object not found", THREAD_ID_IDENT_IMAGE);
      }
